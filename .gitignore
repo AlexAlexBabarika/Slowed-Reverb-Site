@@ -1,0 +1,14 @@
+app/__pycache__/__init__.cpython-313.pyc
+app/__pycache__/admin.cpython-313.pyc
+app/__pycache__/apps.cpython-313.pyc
+app/__pycache__/models.cpython-313.pyc
+app/__pycache__/urls.cpython-313.pyc
+app/__pycache__/views.cpython-313.pyc
+app/migrations/__pycache__/__init__.cpython-313.pyc
+app/templatetags/__pycache__/__init__.cpython-313.pyc
+app/templatetags/__pycache__/mul.cpython-313.pyc
+app/templatetags/__pycache__/range.cpython-313.pyc
+slowedreverbsite/__pycache__/__init__.cpython-313.pyc
+slowedreverbsite/__pycache__/settings.cpython-313.pyc
+slowedreverbsite/__pycache__/urls.cpython-313.pyc
+slowedreverbsite/__pycache__/wsgi.cpython-313.pyc

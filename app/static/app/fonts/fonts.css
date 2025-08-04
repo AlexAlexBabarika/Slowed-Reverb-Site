@@ -1,0 +1,13 @@
+@font-face {
+  font-family: 'Elza';
+  src: url('/static/app/fonts/Elza_Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Elza';
+  src: url('/static/app/fonts/Elza_Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}

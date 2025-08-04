@@ -1,0 +1,215 @@
+:root {
+    --text: rgb(255, 247, 232);
+    --background: #101010;
+    --shadow: rgba(255, 255, 255, 0.204);
+}
+
+body {
+    margin: 0;
+    padding: 4vh;
+    background-color: var(--background);
+    color: var(--text);
+    font-family: 'Elza';
+    font-weight: 500;
+}
+
+h1 {
+    transition: transform 0.5s ease;
+}
+h1:hover{
+    transform: scale(1.022);
+    text-shadow: 0px 4px 16px var(--shadow);
+}
+
+.main-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4vh;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    display: flex;
+    flex-direction: row;
+    align-items: center; 
+    height: 64vh;
+    box-sizing: border-box;
+    gap: 3vh;
+}
+
+.lower-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    height: 12vh;
+    box-sizing: border-box;
+}
+
+.box {
+    display: flex;
+    flex-direction: column;
+    /* justify-content: space-between; */
+    border: 2px solid var(--text);
+    border-radius: 16px;
+    text-align: left;
+    padding: 2vh;
+    width: 30vw; 
+    height: 100%;
+    gap: 1.5vw;
+    box-sizing: border-box;
+    box-shadow: 0 4px 16px var(--shadow);
+    transition: transform 0.3s ease;
+}
+.box:hover {
+    transform: scale(1.03);
+}
+
+.lower-box { 
+    border: 2px solid white;
+    padding: 20px;
+    border-radius: 16px;
+    text-align: center;
+    width: 60vw; 
+    height: 100%;
+    box-sizing: border-box;
+    box-shadow: 0 4px 16px var(--shadow);
+    transition: transform 0.3s ease;
+} 
+.lower-box:hover {
+    transform: scale(1.03);
+}
+
+button {
+    border: 2px solid var(--text);
+    border-radius: 16px;
+    background-color: transparent;
+    min-height: 2.5vw;
+    color: var(--text);
+    font-size: 24;
+    font-weight: 700;
+    transition: transform 0.5s ease;
+}
+
+button:hover {
+    transform: scale(1.03);
+    box-shadow: 0px 4px 16px var(--shadow);
+}
+
+.custom-player {
+    display: flex;
+    flex-direction: column;
+    gap: 1vh;
+    background-color: #1a1a1a;
+    padding: 16px;
+    border-radius: 16px;
+    border: 2px solid var(--text);
+    box-sizing: border-box;
+    box-shadow: 0 0 12px var(--shadow);
+}
+
+.custom-player .controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text);
+}
+
+.custom-player button {
+    background: none;
+    border: 2px solid var(--text);
+    color: var(--text);
+    font-size: 20px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+#currentTime {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+#duration {
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Webkit browsers (Chrome, Safari) */
+input[type="range"].slider::-webkit-slider-runnable-track {
+    height: 5px;
+    background: white;
+    border-radius: 2px;
+}
+
+input[type="range"].slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 1vw;
+    height: 1vw;
+    border-radius: 50%;
+    background: white;
+    margin-top: -7px; /* centers thumb vertically */
+    box-shadow: 0 0 6px var(--shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="range"].slider:hover::-webkit-slider-thumb {
+    transform: scale(1.2);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+/* Firefox */
+input[type="range"].slider::-moz-range-track {
+    height: 5px;
+    background: white;
+    border-radius: 2px;
+}
+
+input[type="range"].slider::-moz-range-thumb {
+    width: 1vw;
+    height: 1vw;
+    border-radius: 50%;
+    background: white;
+    border: none;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="range"].slider:hover::-moz-range-thumb {
+    transform: scale(1.2);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 10, 10, 0.85);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.loading-box {
+    padding: 2rem 3rem;
+    border: 2px solid var(--text);
+    border-radius: 16px;
+    box-shadow: 0 0 24px var(--shadow);
+    text-align: center;
+    background-color: #111;
+
+    animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.06); }
+    100% { transform: scale(1); }
+}
