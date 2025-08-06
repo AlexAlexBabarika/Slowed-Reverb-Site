@@ -1,2 +1,3 @@
 Django
 ffmpeg-python
+mutagen

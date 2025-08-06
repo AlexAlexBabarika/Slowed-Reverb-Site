@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, FileResponse
 from django.views.decorators.csrf import csrf_exempt
+from mutagen import File as MutagenFile
 import os, ffmpeg, tempfile, math, time
 
 format_map = {
@@ -21,6 +22,7 @@ def index(request):
             filename = file.name
             ext = os.path.splitext(filename)[1].lower().replace('.', '')
             input_format = format_map.get(ext)
+
             if not input_format:
                 continue
 
@@ -28,6 +30,15 @@ def index(request):
                 tmp_in.write(file.read())
                 tmp_in.flush()
                 input_path = tmp_in.name
+
+            artist = ""
+            try:
+                audio_meta = MutagenFile(input_path, easy=True)
+                if (audio_meta):
+                    artist = audio_meta.get("artist", ["Unknown"])[0]
+            except Exception as e:
+                print("Metadata error:", e)
+                artist = "Unknown"
 
             original_path = input_path.replace(f".{ext}", "_original.wav")
             ffmpeg.input(input_path, format=input_format).output(original_path, format='wav').run(overwrite_output=True)
@@ -53,7 +64,8 @@ def index(request):
                 "filename": filename,
                 "output_path": output_path,
                 "original_path": original_path,
-                "duration": get_audio_duration(output_path)
+                "duration": get_audio_duration(output_path),
+                "artist": artist
             })
 
         request.session["playlist"] = playlist
