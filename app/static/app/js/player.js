@@ -5,11 +5,32 @@ const volumeControl = document.getElementById('volumeControl');
 const currentTimeDisplay = document.getElementById('currentTime');
 const durationDisplay = document.getElementById('duration');
 
+let isDragging = false;
+
 function formatTime(sec) {
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
 }
+
+audio.addEventListener('timeupdate', () => {
+    if (!isDragging && audio.duration) {
+        seekBar.value = (audio.currentTime / audio.duration) * 100;
+        currentTimeDisplay.textContent = formatTime(audio.currentTime);
+    }
+});
+
+seekBar.addEventListener('change', () => {
+    if (audio.duration) {
+        const value = seekBar.value;
+        audio.currentTime = (value / 100) * audio.duration;
+    }
+    isDragging = false;
+});
+
+seekBar.addEventListener('input', () => {
+    isDragging = true;
+});
 
 playPause.addEventListener('click', () => {
     if (audio.paused) {
@@ -21,18 +42,8 @@ playPause.addEventListener('click', () => {
     }
 });
 
-audio.addEventListener('timeupdate', () => {
-    seekBar.value = (audio.currentTime / audio.duration) * 100;
-    currentTimeDisplay.textContent = formatTime(audio.currentTime);
-});
-
 audio.addEventListener('loadedmetadata', () => {
     durationDisplay.textContent = formatTime(audio.duration);
-});
-
-seekBar.addEventListener('input', () => {
-    const percent = seekBar.value;
-    audio.currentTime = (percent / 100) * audio.duration;
 });
 
 volumeControl.addEventListener('input', () => {

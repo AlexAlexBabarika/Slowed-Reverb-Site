@@ -1,4 +1,4 @@
-{% load mul %}
+{% load funcs %}
 {% load static %}
 <link rel="stylesheet" href="{% static 'app/fonts/fonts.css' %}">
 
@@ -15,80 +15,179 @@
             <span>Processing audio... 🎧</span>
         </div>
     </div>
+
     <h1 style="font-size: 48; font-family: 'Elza'; font-weight: 700; text-align: center; width: 100%;">Slowed x Reverb 💿</h1>
+
     <div class="main-container">
         <div class="container">
+            <!-- 🎚 Speed + Pitch Control -->
             <div class="box" style="font-size: 32;">
                 <div>Change speed 🏎️</div>
 
                 <div style="display: flex; flex-direction: column; gap: 1vw; height: 100%;">
                     <div style="display: flex; flex-direction: row;">
-                        <div style="font-size: 24px; font-weight: 500;"> Speed: &nbsp;<span id="speed_display">{{ speed_value|mul:100|floatformat:2 }}%</span></div>
-                        <div style="font-size: 24; font-weight: 500; margin-left: auto;"><span id="speed_pitch_display">{{ speed_pitch_value|default:"0.00 semitones"}}</span></div>
+                        <div style="font-size: 24px; font-weight: 500;">
+                            Speed: &nbsp;<span id="speed_display">{{ speed_value|mul:100|floatformat:2 }}%</span>
+                        </div>
+                        <div style="font-size: 24px; font-weight: 500; margin-left: auto;">
+                            <span id="speed_pitch_display">{{ speed_pitch_value|default:"0.00 semitones"}}</span>
+                        </div>
                     </div>
-                    <input type="range" name="speed_change" id="speed_slider" min="0.1" max="2" step="0.01" value="{{ speed_value|default:"1.00" }}" class="slider" />
-                    <div style="font-size: 24; font-weight: 500;">Pitch (semitones): &nbsp;<span id="pitch_display">{{ pitch_value|default:"0" }}</span></div>
-                    <input type="range" name="pitch_change" id="pitch_slider" min="-12" max="12" step="1" value="{{ pitch_value|default:"0" }}" class="slider" />
-                    <form method="post" action="{% url 'reload_audio' %}" style="margin-top: auto; margin-bottom: 0;">
-                        {% csrf_token %}
-                        <input type="hidden" name="speed_change_hidden" id="speed_reload_hidden" value="{{ speed_value }}">
-                        <input type="hidden" name="pitch_change_hidden" id="pitch_reload_hidden" value="{{ pitch_value }}">
-                        <input type="hidden" name="speed_pitch_hidden" id="sp_hidden_reload" value="{{ speed_pitch_value|default:"0.00 semitones" }}">
-                        <button type="submit" style="width: 100%">
-                            Reload
-                        </button>
-                    </form>
+
+                    <input type="range" name="speed_change" id="speed_slider" min="0.1" max="2" step="0.01"
+                        value="{{ speed_value|default:"1.00" }}" class="slider" />
+
+                    <div style="font-size: 24px; font-weight: 500;">
+                        Pitch (semitones): &nbsp;<span id="pitch_display">{{ pitch_value|default:"0" }}</span>
+                    </div>
+
+                    <input type="range" name="pitch_change" id="pitch_slider" min="-12" max="12" step="1"
+                        value="{{ pitch_value|default:"0" }}" class="slider" />
                 </div>
             </div>
 
+            <!-- 🛠 WIP Effects -->
             <div class="box" style="font-size: 32;">
                 <div>Apply effects 🤖</div>
-
                 <div style="margin-left: auto; margin-right: auto;">W.I.P</div>
             </div>
 
+            <!-- 📁 Playlist & Upload -->
             <div class="box" style="font-size: 32px;">
                 <div>Choose songs 💾</div>
-                <div style="margin-left: auto; margin-right: auto;">Playlist W.I.P</div>
-                <div style="margin-left: auto; margin-right: auto;">Downloading from Youtube W.I.P</div>
 
-                <form id="uploadForm" method="post" enctype="multipart/form-data" style=" margin-top: auto; margin-bottom: 0;">
+                <div class="playlist-scroll" style="max-height: 50vh; overflow-y: auto;">
+                    <ol style="list-style: none;
+                            padding-left: 0;
+                            margin: 0;
+                            display: flex;
+                            flex-direction:
+                            column; gap: 0.5em;
+                        ">
+
+                        {% for song in playlist %}
+                        <li style="
+                            padding: 0.5em 0;
+                            border-bottom: 1px solid #444;
+                            display: flex;
+                            align-items: center;
+                        ">
+                            <!-- Row Container -->
+                            <div style="display: flex; align-items: center; width: 100%; gap: 1em;">
+                                
+                                <!-- 🎵 Track Number -->
+                                <div style="width: 0.5em; text-align: left; font-weight: bold; flex-shrink: 0;">
+                                    {{ forloop.counter }}.
+                                </div>
+
+                                <!-- 🎼 Song Info -->
+                                <div style="display: flex;
+                                            flex-direction: column;
+                                            justify-content: center;
+                                            flex-grow: 1;
+                                            min-width: 0;
+                                            overflow: hidden;
+                                            ">
+                                    <span style="font-size: 12px; color: gray;">Unknown Artist</span>
+                                    <span style="
+                                        font-size: 18px;
+                                        white-space: nowrap;
+                                        overflow: hidden;
+                                        text-overflow: ellipsis;
+                                    " title="{{ song.filename }}">
+                                        {{ song.filename }}
+                                    </span>
+                                </div>
+
+                                <!-- 🛠 Action Buttons -->
+                                <div style="display: flex; align-items: center; gap: 0.5em; flex-shrink: 0; margin-right: 13px;">
+
+                                    <!-- 🗑️ Delete -->
+                                    <form method="post" action="{% url 'delete_from_playlist' %}" style="margin: 0;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="index" value="{{ forloop.counter0 }}">
+                                        <button type="submit" style="font-size: 16px;">🗑️</button>
+                                    </form>
+
+                                    <!-- ▶️ Reload/Play -->
+                                    <form method="post" action="{% url 'reload_audio' %}" class="reload-form" style="margin: 0;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="index" value="{{ forloop.counter0 }}">
+                                        <input type="hidden" name="speed_change_hidden" id="speed_reload_hidden_{{ forloop.counter0 }}" value="{{ speed_value }}">
+                                        <input type="hidden" name="pitch_change_hidden" id="pitch_reload_hidden_{{ forloop.counter0 }}" value="{{ pitch_value }}">
+                                        <input type="hidden" name="speed_pitch_hidden" id="sp_hidden_reload_{{ forloop.counter0 }}" value="{{ speed_pitch_value|default:"0.00 semitones" }}">
+                                        <button type="submit" class="reload-and-play" style="font-size: 16px;" data-index="{{ forloop.counter0 }}">▶️</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+
+                <!-- 📤 Upload Form -->
+                <form id="uploadForm" method="post" enctype="multipart/form-data" style="margin-top: auto; margin-bottom: 0;">
                     {% csrf_token %}
                     <input type="hidden" name="speed_change_hidden" id="speed_hidden" value="{{ speed_value|default:"1.00" }}">
                     <input type="hidden" name="pitch_change_hidden" id="pitch_hidden" value="{{ pitch_value|default:"0" }}">
                     <input type="hidden" name="speed_pitch_hidden" id="sp_hidden" value="{{ speed_pitch_value|default:"0.00 semitones" }}">
 
-                    <input type="file" id="fileInput" name="audio_file" accept="audio/*" style="display: none;" onchange="submitFormWithSpeed()">
-                    <button type="button" style="width: 100%;" onclick="document.getElementById('fileInput').click()">
-                        Choose song(s)
-                    </button>
-
-                    <script src="{% static 'app/js/upload.js' %}"></script>
+                    <input type="file" id="fileInput" name="audio_file" accept="audio/*" style="display: none;" multiple onchange="submitFormWithSpeed()">
+                    <button type="button" style="width: 100%;" onclick="document.getElementById('fileInput').click()">Choose song(s)</button>
                 </form>
             </div>
         </div>
 
+        <!-- 🎧 Global Audio Player -->
         <div class="lower-container">
             <div class="lower-box">
-                {% if audio_available %}
-                    <div class="custom-player">
-                        <audio id="audio" src="{% url 'serve_audio' %}"></audio>
+                {% if last_played_index is not None and playlist %}
+                <div class="custom-player">
+                    <audio id="audio" src=""></audio>
 
-                        <div class="controls">
-                            <button id="playPause">▶️</button>
-
-                            <span id="currentTime">0:00</span> /
-                            <span id="duration">0:00</span>
-
-                            <input id="seekBar" style="flex-grow: 1;" type="range" min="0" max="100" value="0" class="slider">
-
-                            <input id="volumeControl" style="flex-grow: 1;" type="range" min="0" max="1" step="0.01" value="1" class="slider">
-                        </div>
+                    <div class="controls">
+                        <button id="playPause">▶️</button>
+                        <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
+                        <input id="seekBar" style="flex-grow: 1;" type="range" min="0" max="100" value="0" class="slider">
+                        <input id="volumeControl" style="flex-grow: 1;" type="range" min="0" max="1" step="0.01" value="1" class="slider">
                     </div>
-                    <script src="{% static 'app/js/player.js' %}"></script>
+                </div>
                 {% endif %}
             </div>
-        </div>  
+        </div>
     </div>
+
+    <script src="{% static 'app/js/upload.js' %}"></script>
+    <script src="{% static 'app/js/player.js' %}"></script>
+    {% if last_played_index is not None%}
+        <script>
+            window.addEventListener('DOMContentLoaded', () => {
+                const audio = document.getElementById('audio');
+                const index = {{ last_played_index }};
+                const timestamp = new Date().getTime();
+
+                audio.src = `/audio/${index}/?t=${timestamp}`;
+                console.log("Last played index:", index);
+            });
+        </script>
+    {% endif %}
+        <script>
+            window.addEventListener("DOMContentLoaded", () => {
+                const speed = parseFloat(speedSlider.value).toFixed(2);
+                const pitch = parseInt(pitchSlider.value);
+
+                speedValue.textContent = (speed * 100).toFixed(2) + "%";
+                pitchValue.textContent = (pitch > 0 ? "+" + pitch : pitch);
+
+                let semitones = (12 * Math.log2(speed)).toFixed(2);
+                if (parseFloat(semitones) > 0) {
+                    semitones = "+" + semitones;
+                }
+                semitones += " semitones";
+
+                speedPitchValue.textContent = semitones;
+                speedPitchHidden.value = semitones;
+            })
+        </script>
 </body>
 </html>

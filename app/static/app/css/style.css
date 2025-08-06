@@ -50,7 +50,6 @@ h1:hover{
 .box {
     display: flex;
     flex-direction: column;
-    /* justify-content: space-between; */
     border: 2px solid var(--text);
     border-radius: 16px;
     text-align: left;
@@ -136,7 +135,14 @@ button:hover {
     font-variant-numeric: tabular-nums;
 }
 
-/* Webkit browsers (Chrome, Safari) */
+input[type="range"].slider {
+    -webkit-appearance: none; 
+    background: transparent;  
+    width: 100%;
+    accent-color: white;      
+    pointer-events: auto;
+}
+
 input[type="range"].slider::-webkit-slider-runnable-track {
     height: 5px;
     background: white;
@@ -144,18 +150,18 @@ input[type="range"].slider::-webkit-slider-runnable-track {
 }
 
 input[type="range"].slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
+    background-color: white;
     width: 1vw;
     height: 1vw;
     border-radius: 50%;
-    background: white;
-    margin-top: -7px; /* centers thumb vertically */
+    margin-top: -7px;
     box-shadow: 0 0 6px var(--shadow);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: none;
 }
 
 input[type="range"].slider:hover::-webkit-slider-thumb {
     transform: scale(1.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
 }
 
@@ -167,18 +173,42 @@ input[type="range"].slider::-moz-range-track {
 }
 
 input[type="range"].slider::-moz-range-thumb {
+    background: white;
+    border: none;
     width: 1vw;
     height: 1vw;
     border-radius: 50%;
-    background: white;
-    border: none;
     box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: none;
 }
 
 input[type="range"].slider:hover::-moz-range-thumb {
     transform: scale(1.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+.playlist-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: white transparent;
+}
+
+/* WebKit browsers */
+.playlist-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.playlist-scroll::-webkit-scrollbar-thumb {
+  background-color: white;  /* ✅ Correct now */
+  border-radius: 4px;
+}
+
+.playlist-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 #loading-overlay {
