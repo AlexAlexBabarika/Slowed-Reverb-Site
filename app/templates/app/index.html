@@ -91,7 +91,7 @@
                                             min-width: 0;
                                             overflow: hidden;
                                             ">
-                                    <span style="font-size: 12px; color: gray;">{{ song.artist }}</span>
+                                    <span style="font-size: 12px; color: gray;">{{ song.artist}}</span>
                                     <span style="
                                         font-size: 18px;
                                         white-space: nowrap;
@@ -128,8 +128,22 @@
                     </ol>
                 </div>
 
+                <form method="POST" action="{% url 'download_from_youtube' %}" enctype="multipart/form-data" style="margin-top: auto; margin-bottom: -0.5vw"">
+                    {% csrf_token %}
+                    <input type="hidden" name="speed_change_hidden" value="1.0">
+                    <input type="hidden" name="pitch_change_hidden" value="0">
+                    <input type="hidden" name="speed_pitch_hidden" value="0.00 semitones">
+                    <div style="display: flex; flex-direction: column; gap: 0.5vw">
+                        <div>Enter YouTube url:</div>
+                        <div style="display: flex; align-items: center; gap: 0.5em;">
+                            <input type="url" style="width: 100%;" name="youtube_url" placeholder="YouTube URL" required>
+                            <button type="submit">⬇️</button>
+                        </div>
+                    </div>
+                </form>
+
                 <!-- 📤 Upload Form -->
-                <form id="uploadForm" method="post" enctype="multipart/form-data" style="margin-top: auto; margin-bottom: 0;">
+                <form id="uploadForm" method="post" enctype="multipart/form-data" style="margin-bottom: 0;">
                     {% csrf_token %}
                     <input type="hidden" name="speed_change_hidden" id="speed_hidden" value="{{ speed_value|default:"1.00" }}">
                     <input type="hidden" name="pitch_change_hidden" id="pitch_hidden" value="{{ pitch_value|default:"0" }}">

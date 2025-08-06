@@ -1,8 +1,10 @@
+import uuid
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, FileResponse
 from django.views.decorators.csrf import csrf_exempt
 from mutagen import File as MutagenFile
 import os, ffmpeg, tempfile, math, time
+import yt_dlp
 
 format_map = {
     'mp3': 'mp3', 'wav': 'wav', 'flac': 'flac', 'm4a': 'mov',
@@ -45,19 +47,7 @@ def index(request):
             output_path = original_path.replace('_original.wav', '_out.wav')
 
             sr = int(get_sample_rate(open(input_path, 'rb')))
-            try:
-                if pitch_change != 0 and abs(speed_change - 1.0) > 1e-3:
-                    with tempfile.NamedTemporaryFile(suffix="_mid.wav", delete=False) as mid:
-                        mid_path = mid.name
-                    change_speed(sr, original_path, mid_path, speed_change)
-                    change_pitch(sr, mid_path, output_path, pitch_change)
-                    os.remove(mid_path)
-                elif pitch_change != 0:
-                    change_pitch(sr, original_path, output_path, pitch_change)
-                else:
-                    change_speed(sr, original_path, output_path, speed_change)
-            except ffmpeg.Error:
-                continue
+            process_audio(sr, input_path, output_path, speed_change, pitch_change)
 
             os.remove(input_path)
             playlist.append({
@@ -116,20 +106,7 @@ def reload_audio(request):
 
     output_path = input_path.replace('_original.wav', '_reloaded.wav')
     sr = int(get_sample_rate(open(input_path, 'rb')))
-
-    try:
-        if pitch_change != 0 and abs(speed_change - 1.0) > 1e-3:
-            with tempfile.NamedTemporaryFile(suffix="_mid.wav", delete=False) as mid:
-                mid_path = mid.name
-            change_speed(sr, input_path, mid_path, speed_change)
-            change_pitch(sr, mid_path, output_path, pitch_change)
-            os.remove(mid_path)
-        elif pitch_change != 0:
-            change_pitch(sr, input_path, output_path, pitch_change)
-        else:
-            change_speed(sr, input_path, output_path, speed_change)
-    except ffmpeg.Error as e:
-        return HttpResponse(f"Reload error: {e.stderr.decode()}", status=500)
+    process_audio(sr, input_path, output_path, speed_change, pitch_change)
 
     song["output_path"] = output_path
     song["duration"] = get_audio_duration(output_path)
@@ -168,6 +145,107 @@ def serve_audio(request, index):
     except:
         pass
     return HttpResponse("Audio not found", status=404)
+
+@csrf_exempt
+def download_from_youtube(request):
+    if request.method != "POST":
+        return HttpResponse("Invalid request", status=405)
+
+    url = request.POST.get("youtube_url")
+    if not url:
+        return HttpResponse("No URL provided", status=400)
+
+    # Generate unique base name
+    uid = str(uuid.uuid4())
+    temp_dir = tempfile.gettempdir()
+    download_base = os.path.join(temp_dir, uid)  # no extension
+    download_template = f"{download_base}.%(ext)s"
+    final_mp3 = f"{download_base}.mp3"
+    original_path = f"{download_base}_original.wav"
+    output_path = f"{download_base}_out.wav"
+
+    # yt-dlp options with browser cookies
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': download_template,
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+        'quiet': True,
+        'encoding': 'utf-8',
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+    except Exception as e:
+        return HttpResponse(f"yt-dlp failed: {e}", status=500)
+
+    # Verify file exists
+    if not os.path.exists(final_mp3):
+        return HttpResponse(f"Download failed. File not found: {final_mp3}", status=500)
+
+    # Try to extract artist metadata
+    artist = "Unknown"
+    try:
+        meta = MutagenFile(final_mp3, easy=True)
+        if meta:
+            artist = meta.get("artist", ["Unknown"])[0]
+    except:
+        pass
+
+    # Convert to WAV
+    try:
+        ffmpeg.input(final_mp3).output(original_path, format='wav').run(overwrite_output=True)
+    except Exception as e:
+        return HttpResponse(f"FFmpeg conversion failed: {e}", status=500)
+
+    # Process audio
+    sr = int(get_sample_rate(open(final_mp3, 'rb')))
+    speed_change = float(request.POST.get('speed_change_hidden', 1.0))
+    pitch_change = int(request.POST.get('pitch_change_hidden', 0))
+    speed_pitch_value = request.POST.get('speed_pitch_hidden', '')
+    process_audio(sr, original_path, output_path, speed_change, pitch_change)
+
+    # Add to session playlist
+    playlist = request.session.get("playlist", [])
+    playlist.append({
+        "filename": final_mp3,
+        "output_path": output_path,
+        "original_path": original_path,
+        "duration": get_audio_duration(output_path),
+        "artist": artist,
+    })
+    request.session["playlist"] = playlist
+    request.session["speed_value"] = speed_change
+    request.session["pitch_value"] = pitch_change
+    request.session["speed_pitch_value"] = speed_pitch_value
+    request.session["last_played_index"] = len(playlist) - 1
+
+    # Clean up intermediate mp3
+    try:
+        os.remove(final_mp3)
+    except:
+        pass
+
+    return redirect('index')
+
+def process_audio(sr, input_path, output_path, speed_change, pitch_change):
+    try:
+        if pitch_change != 0 and abs(speed_change - 1.0) > 1e-3:
+            with tempfile.NamedTemporaryFile(suffix="_mid.wav", delete=False) as mid:
+                mid_path = mid.name
+            change_speed(sr, input_path, mid_path, speed_change)
+            change_pitch(sr, mid_path, output_path, pitch_change)
+            os.remove(mid_path)
+        elif pitch_change != 0:
+            change_pitch(sr, input_path, output_path, pitch_change)
+        else:
+            change_speed(sr, input_path, output_path, speed_change)
+    except ffmpeg.Error as e:
+        return HttpResponse(f"Reload error: {e.stderr.decode()}", status=500)
 
 def change_speed(sr, input_path, output_path, speed_change):
     ffmpeg.input(input_path) \
