@@ -206,7 +206,6 @@ input[type="range"].slider:hover::-moz-range-thumb {
 .noUi-handle {
     width: 1vw !important;
     height: 1vw !important;
-    top: 1vw !important;
     right: -0.5vw !important;
     background: white !important;
     border-radius: 50% !important;
