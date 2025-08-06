@@ -12,3 +12,4 @@ slowedreverbsite/__pycache__/__init__.cpython-313.pyc
 slowedreverbsite/__pycache__/settings.cpython-313.pyc
 slowedreverbsite/__pycache__/urls.cpython-313.pyc
 slowedreverbsite/__pycache__/wsgi.cpython-313.pyc
+app/templatetags/__pycache__/funcs.cpython-313.pyc
