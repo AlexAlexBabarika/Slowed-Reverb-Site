@@ -188,6 +188,54 @@ input[type="range"].slider:hover::-moz-range-thumb {
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
 }
 
+/* 🔧 noUiSlider Custom Styling */
+.noUi-target {
+    height: 5px !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-radius: 2px !important;
+    border: none !important;
+    box-shadow: none !important;
+    cursor: pointer;
+}
+
+.noUi-connect {
+    background: white !important;
+    border-radius: 2px !important;
+}
+
+.noUi-handle {
+    width: 1vw !important;
+    height: 1vw !important;
+    top: 1vw !important;
+    right: -0.5vw !important;
+    background: white !important;
+    border-radius: 50% !important;
+    border: none !important;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.4) !important;
+    transition: none !important;
+    cursor: pointer;
+}
+
+/* Hover effect */
+.noUi-handle:hover {
+    transform: scale(1.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Hide inner decorations */
+.noUi-handle:before,
+.noUi-handle:after {
+    display: none !important;
+}
+
+#seek-slider {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 5px;
+  margin: 0 1em;
+}
+
 .playlist-scroll {
   max-height: 60vh;
   overflow-y: auto;
