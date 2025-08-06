@@ -1,3 +1,4 @@
 Django
 ffmpeg-python
 mutagen
+yt-dlp
