@@ -175,6 +175,7 @@ def download_from_youtube(request):
         }],
         'quiet': True,
         'encoding': 'utf-8',
+        'cookiesfrombrowser': ('chrome',)
     }
 
     try:
