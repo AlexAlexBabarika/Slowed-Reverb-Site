@@ -11,6 +11,43 @@
     <link rel="stylesheet" href="{% static 'app/css/nouislider.min.css' %}">
     <link rel="stylesheet" href="{% static 'app/css/style.css' %}">        
     <script src="{% static 'app/js/nouislider.min.js' %}"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 4vh;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-color: var(--background_dark);
+            color: var(--text);
+            font-family: 'Elza';
+            font-weight: 500;
+        }
+
+        body.synthwave {
+            background-image: 
+                linear-gradient(var(--background_shadow), var(--background_shadow)), 
+                url("{% static 'app/images/background_synthwave.jpg' %}");
+        }
+
+        body.dark {
+            background-color: var(--background_dark);
+        }
+
+        #synthwave-background-btn {
+            width: 3vw;
+            height: 3vw;
+            min-width: 40px;
+            min-height: 40px;
+            max-width: 60px;
+            max-height: 60px;
+            background-image: url('{% static 'app/images/background_synthwave.jpg' %}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+    </style>
 </head>
 <body>
     <div id="loading-overlay" style="display: none;">
@@ -19,7 +56,23 @@
         </div>
     </div>
 
-    <h1 style="font-size: 48; font-family: 'Elza'; font-weight: 700; text-align: center; width: 100%;">Slowed x Reverb 💿</h1>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5vw; height: 3.5vw;">
+        <div style="display: flex; gap: 1vw; margin-left: 1vw;">
+            <button id="synthwave-background-btn"></button>
+            <button id="dark-background-btn"></button>
+        </div>
+
+        <h1 style="
+            font-size: 3vw;
+            font-family: 'Elza', sans-serif;
+            font-weight: 700;
+            text-align: center;
+            flex-grow: 1;
+            margin: 0;
+        ">Slowed x Reverb 💿</h1>
+
+        <div style="width: 8vw;"></div>
+    </div>
 
     <div class="main-container">
         <div class="container">
@@ -36,16 +89,12 @@
                             <span id="speed_pitch_display">{{ speed_pitch_value|default:"0.00 semitones"}}</span>
                         </div>
                     </div>
-
-                    <input type="range" name="speed_change" id="speed_slider" min="0.1" max="2" step="0.01"
-                        value="{{ speed_value|default:"1.00" }}" class="slider" />
+                    <div id="speed_slider" style="width: 100%;"></div>
 
                     <div style="font-size: 24px; font-weight: 500;">
                         Pitch (semitones): &nbsp;<span id="pitch_display">{{ pitch_value|default:"0" }}</span>
                     </div>
-
-                    <input type="range" name="pitch_change" id="pitch_slider" min="-12" max="12" step="1"
-                        value="{{ pitch_value|default:"0" }}" class="slider" />
+                    <div id="pitch_slider" style="width: 100%"></div>
                 </div>
             </div>
 
@@ -128,7 +177,7 @@
                     </ol>
                 </div>
 
-                <form method="POST" action="{% url 'download_from_youtube' %}" enctype="multipart/form-data" style="margin-top: auto; margin-bottom: -0.5vw"">
+                <form id="youtubeForm" action="{% url 'download_from_youtube' %}" method="POST" enctype="multipart/form-data" style="margin-top: auto; margin-bottom: -0.5vw"">
                     {% csrf_token %}
                     <input type="hidden" name="speed_change_hidden" value="1.0">
                     <input type="hidden" name="pitch_change_hidden" value="0">
@@ -136,9 +185,19 @@
                     <div style="display: flex; flex-direction: column; gap: 0.5vw">
                         <div>Enter YouTube url:</div>
                         <div style="display: flex; align-items: center; gap: 0.5em;">
-                            <input type="url" style="width: 100%;" name="youtube_url" placeholder="YouTube URL" required>
-                            <button type="submit">⬇️</button>
+                            <input id="url-input" type="url" style="width: 100%;" name="youtube_url" placeholder="YouTube URL" required>
+                            <button type="button" onclick="submitYouTubeForm()">⬇️</button>
                         </div>
+                        <script>
+                            function submitYouTubeForm() {
+                                const urlInput = document.getElementById("url-input");
+                                const url = urlInput.value.trim();
+                                if (!url.startsWith("http")) return;
+
+                                showLoading();
+                                document.getElementById("youtubeForm").submit();
+                            }
+                        </script>
                     </div>
                 </form>
 
@@ -149,7 +208,7 @@
                     <input type="hidden" name="pitch_change_hidden" id="pitch_hidden" value="{{ pitch_value|default:"0" }}">
                     <input type="hidden" name="speed_pitch_hidden" id="sp_hidden" value="{{ speed_pitch_value|default:"0.00 semitones" }}">
 
-                    <input type="file" id="fileInput" name="audio_file" accept="audio/*" style="display: none;" multiple onchange="submitFormWithSpeed()">
+                    <input type="file" id="fileInput" name="audio_file" accept="audio/*" style="display: none;" multiple>
                     <button type="button" style="width: 100%;" onclick="document.getElementById('fileInput').click()">Choose song(s)</button>
                 </form>
             </div>
@@ -167,7 +226,8 @@
                         <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
                         <!-- <input id="seekBar" style="flex-grow: 1;" type="range" min="0" max="100" value="0" class="slider"> -->
                         <div id="seek-slider" style="flex-grow: 1; width: 100%"></div>
-                        <input id="volumeControl" style="flex-grow: 1;" type="range" min="0" max="1" step="0.01" value="1" class="slider">
+                        <div id="volume-slider" style="flex-grow: 1; width: 100%"></div>
+                        <!-- <input id="volumeControl" style="flex-grow: 1;" type="range" min="0" max="1" step="0.01" value="1" class="slider"> -->
                     </div>
                 </div>
                 {% endif %}
@@ -175,49 +235,22 @@
         </div>
     </div>
 
-
     <script src="{% static 'app/js/main.js' %}"></script>
     <script src="{% static 'app/js/player.js' %}"></script>
     <script src="{% static 'app/js/upload.js' %}"></script>
-    {% if last_played_index is not None%}
-        <script>
-            window.addEventListener('DOMContentLoaded', () => {
-                const audio = document.getElementById('audio');
-                const index = {{ last_played_index }};
-                const timestamp = new Date().getTime();
+    <script src="{% static 'app/js/background.js' %}"></script>
+    {% if last_played_index is not None %}
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const audio = document.getElementById('audio');
+            const index = {{ last_played_index }};
+            const timestamp = new Date().getTime();
 
-                // Step 1: Set the source
-                audio.src = `/audio/${index}/?t=${timestamp}`;
-                audio.load();
-            });
-        </script>
+            // Set audio source with cache-busting timestamp
+            audio.src = `/audio/${index}/?t=${timestamp}`;
+            audio.load();
+        });
+    </script>
     {% endif %}
-        <script>
-            window.addEventListener("DOMContentLoaded", () => {
-                const speedSlider = document.getElementById('speed_slider');
-                const speedValue  = document.getElementById("speed_display");
-
-                const pitchSlider = document.getElementById('pitch_slider');
-                const pitchValue = document.getElementById('pitch_display');
-
-                const speedPitchValue = document.getElementById('speed_pitch_display');
-                const speedPitchHidden = document.getElementById("sp_hidden");
-
-                const speed = parseFloat(speedSlider.value).toFixed(2);
-                const pitch = parseInt(pitchSlider.value);
-
-                speedValue.textContent = (speed * 100).toFixed(2) + "%";
-                pitchValue.textContent = (pitch > 0 ? "+" + pitch : pitch);
-
-                let semitones = (12 * Math.log2(speed)).toFixed(2);
-                if (parseFloat(semitones) > 0) {
-                    semitones = "+" + semitones;
-                }
-                semitones += " semitones";
-
-                speedPitchValue.textContent = semitones;
-                speedPitchHidden.value = semitones;
-            })
-        </script>
 </body>
 </html>
