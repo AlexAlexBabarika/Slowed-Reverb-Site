@@ -179,22 +179,16 @@ def download_from_youtube(request):
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            info = ydl.extract_info(url, download=True)
+            video_title = info.get("title", "Unknown Title")
+            author_name = info.get("uploader", "Unknown Author")
+
     except Exception as e:
         return HttpResponse(f"yt-dlp failed: {e}", status=500)
 
     # Verify file exists
     if not os.path.exists(final_mp3):
         return HttpResponse(f"Download failed. File not found: {final_mp3}", status=500)
-
-    # Try to extract artist metadata
-    artist = "Unknown"
-    try:
-        meta = MutagenFile(final_mp3, easy=True)
-        if meta:
-            artist = meta.get("artist", ["Unknown"])[0]
-    except:
-        pass
 
     # Convert to WAV
     try:
@@ -212,11 +206,11 @@ def download_from_youtube(request):
     # Add to session playlist
     playlist = request.session.get("playlist", [])
     playlist.append({
-        "filename": final_mp3,
+        "filename": video_title,
         "output_path": output_path,
         "original_path": original_path,
         "duration": get_audio_duration(output_path),
-        "artist": artist,
+        "artist": author_name,
     })
     request.session["playlist"] = playlist
     request.session["speed_value"] = speed_change
