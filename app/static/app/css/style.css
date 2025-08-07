@@ -2,7 +2,7 @@
     --text: rgb(255, 247, 232);
     --background_dark: #101010;
     --shadow: rgba(255, 255, 255, 0.204);
-    --background_shadow: rgba(0, 0, 0, 0.74)
+    --background_shadow: rgba(0, 0, 0, 0.65)
 }
 
 h1 {
@@ -87,6 +87,15 @@ input[type="url"]:hover {
     transform: scale(1.03);
 }
 
+.box.synthwave {
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px var(--shadow);
+    backdrop-filter: blur(5.5px);
+    -webkit-backdrop-filter: blur(5.5px);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+}
+
 .lower-box { 
     border: 2px solid white;
     padding: 20px;
@@ -100,6 +109,16 @@ input[type="url"]:hover {
 } 
 .lower-box:hover {
     transform: scale(1.03);
+}
+
+
+.lower-box.synthwave {
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px var(--shadow);
+    backdrop-filter: blur(5.5px);
+    -webkit-backdrop-filter: blur(5.5px);
+    border: 1px solid rgba(255, 255, 255, 0.85);
 }
 
 button {
@@ -130,6 +149,15 @@ button:hover {
     border: 2px solid var(--text);
     box-sizing: border-box;
     box-shadow: 0 0 12px var(--shadow);
+}
+
+.custom-player.synthwave {
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px var(--shadow);
+    backdrop-filter: blur(5.5px);
+    -webkit-backdrop-filter: blur(5.5px);
+    border: 1px solid rgba(255, 255, 255, 0.85);
 }
 
 .custom-player .controls {
