@@ -1,4 +1,4 @@
-![interface](interface.png)
+![interface](interface.png?raw=true)
 <h1>Slowed Reverb Site</h1>
 Change speed and pitch of your favourite songs in browser. Also apply effects, such as <b>Reverb</b> (In the future...).
 
