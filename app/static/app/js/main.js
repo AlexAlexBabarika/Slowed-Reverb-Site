@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sliderContainer = document.getElementById('seek-slider');
     const currentTimeDisplay = document.getElementById('currentTime');
     const durationDisplay = document.getElementById('duration');
+
     const playPauseBtn = document.getElementById('playPause');
 
     if (!audio || !sliderContainer) return;
@@ -68,15 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     playPauseBtn.addEventListener('click', () => {
-        if (audio.paused) {    
-            setTimeout(() => {
-                    audio.play().then(() => {
-                        playPauseBtn.textContent = '⏸️';
-                        console.log("▶️ Playing!");
-                    }).catch(err => {
-                        console.warn("🚫 Autoplay blocked:", err);
-                    });
-                    }, 10); // slight delay is important!
+        if (audio.paused) {
+            audio.play().then(() => {
+            playPauseBtn.textContent = '⏸️';
+            console.log("▶️ Playing!");
+            }).catch(err => {
+                console.warn("🚫 Not allowed:", err);
+            });
         } else {
             audio.pause();
             playPauseBtn.textContent = '▶️';

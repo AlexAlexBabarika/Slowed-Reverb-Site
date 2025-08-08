@@ -105,6 +105,10 @@ window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('loading-overlay').style.display = 'flex';
     }
 
+    window.hideLoading = function () {
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
+
     if (fileInput) {
         fileInput.addEventListener('change', submitFormWithSpeed);
     }
