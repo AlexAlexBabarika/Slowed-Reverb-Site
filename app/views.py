@@ -1,6 +1,6 @@
 import uuid
 from django.shortcuts import render, redirect
-from django.http import HttpResponse, FileResponse
+from django.http import HttpResponse, FileResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from mutagen import File as MutagenFile
 import os, ffmpeg, tempfile, math, time
@@ -226,6 +226,21 @@ def download_from_youtube(request):
         pass
 
     return redirect('index')
+
+@csrf_exempt
+def set_last_played(request, index):
+    if request.method != "POST":
+        return HttpResponseBadRequest("Invalid request method")
+
+    try:
+        index = int(index)
+    except ValueError:
+        return HttpResponseBadRequest("Invalid index")
+
+    request.session['last_played_index'] = index
+    request.session.modified = True
+
+    return JsonResponse({"status": "ok", "last_played_index": index})
 
 def process_audio(sr, input_path, output_path, speed_change, pitch_change):
     try:

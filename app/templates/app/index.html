@@ -99,6 +99,7 @@
                         Pitch (semitones): &nbsp;<span id="pitch_display">{{ pitch_value|default:"0" }}</span>
                     </div>
                     <div id="pitch_slider" style="width: 100%"></div>
+                    <button style="margin-top: auto;">Reapply 🔁</button>
                 </div>
             </div>
 
@@ -226,7 +227,9 @@
                     <audio id="audio" src=""></audio>
 
                     <div class="controls">
+                        <button id="prev-btn">⏮️</button>
                         <button id="playPause">▶️</button>
+                        <button id="next-btn">⏭️</button>
                         <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
                         <!-- <input id="seekBar" style="flex-grow: 1;" type="range" min="0" max="100" value="0" class="slider"> -->
                         <div id="seek-slider" style="flex-grow: 1; width: 100%"></div>
@@ -253,6 +256,56 @@
             // Set audio source with cache-busting timestamp
             audio.src = `/audio/${index}/?t=${timestamp}`;
             audio.load();
+
+            let currentIndex = {{ last_played_index|default:0 }};
+            const total = {{ playlist|length }};
+            if (!total) return;
+
+            const prevTrackBtn = document.getElementById('prev-btn');
+            const nextTrackBtn = document.getElementById('next-btn');
+
+            function persistIndex(index) {
+                fetch(`/set_last_played/${index}/`, {
+                method: 'POST'
+                }).catch(() => {});
+            }
+
+            function switchAndPlay(index) {
+                currentIndex = ((index % total) + total) % total;
+
+                audio.pause();
+                audio.removeAttribute('src');
+                audio.load();
+
+                const ts = Date.now();
+                audio.src = `/audio/${currentIndex}/?t=${ts}`;
+                audio.load();
+
+                const tryPlay = () => {
+                    audio.play()
+                        .then(() => {
+                            persistIndex(currentIndex);
+                        })
+                        .catch(err => {
+                            console.warn('play() failed:', err);
+                        });
+                };
+
+                if (audio.readyState >= 3) {
+                    tryPlay()
+                    return;
+                }
+
+                audio.addEventListener('canplay', tryPlay, { once: true });
+            }
+
+            prevTrackBtn.addEventListener('click', () => {
+                switchAndPlay(currentIndex - 1);
+            });
+
+            nextTrackBtn.addEventListener('click', () => {
+                switchAndPlay(currentIndex + 1);
+            });
         });
     </script>
     {% endif %}
