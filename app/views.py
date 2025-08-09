@@ -6,6 +6,8 @@ from mutagen import File as MutagenFile
 import os, ffmpeg, tempfile, math, time
 import yt_dlp
 
+from app.misc import cleanup_temp_old_files
+
 format_map = {
     'mp3': 'mp3', 'wav': 'wav', 'flac': 'flac', 'm4a': 'mov',
     'aac': 'aac', 'ogg': 'ogg', 'opus': 'opus',
@@ -265,6 +267,12 @@ def set_last_played(request, index):
 
     return JsonResponse({"status": "ok", "last_played_index": index})
 
+@csrf_exempt
+def cleanup_view(request):
+    active = collect_active_paths_from_session(request)
+    cleanup_temp_old_files(active_paths=active)
+    return JsonResponse({"status": "ok"})
+
 def process_audio(sr, input_path, output_path, speed_change, pitch_change):
     try:
         if pitch_change != 0 and abs(speed_change - 1.0) > 1e-3:
@@ -315,7 +323,11 @@ def get_audio_duration(path):
             return round(float(stream["duration"]))
     return 0
 
-def build_variant_path(original_path, speed_change, pitch_change):
-    base, _ = os.path.splitext(original_path)
-    speed_tag = int(round(speed_change * 1000))
-    return f"{base}_s{speed_tag}_p{pitch_change}.wav"
+def collect_active_paths_from_session(request):
+    active = []
+    for song in request.session.get("playlist", []):
+        for key in ("original_path", "output_path"):
+            p = song.get(key)
+            if p and os.path.exists(p):
+                active.append(p)
+    return active
