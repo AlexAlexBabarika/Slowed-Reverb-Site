@@ -31,10 +31,6 @@
                 url("{% static 'app/images/background_synthwave.jpg' %}");
         }
 
-        .body.dark {
-            
-        }
-
         body.dark {
             background-color: var(--background_dark);
         }
@@ -99,7 +95,17 @@
                         Pitch (semitones): &nbsp;<span id="pitch_display">{{ pitch_value|default:"0" }}</span>
                     </div>
                     <div id="pitch_slider" style="width: 100%"></div>
-                    <button style="margin-top: auto;">Reapply 🔁</button>
+
+                    {% if last_played_index is not None %}
+                        <form method="post" style="margin-bottom: 0; margin-top: auto;" action="{% url 'reload_audio' %}" class="reapply-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="index" value="{{ last_played_index }}">
+                            <input type="hidden" name="speed_change_hidden" id="speed_reapply_hidden" value="{{ speed_value }}">
+                            <input type="hidden" name="pitch_change_hidden" id="pitch_reapply_hidden" value="{{ pitch_value }}">
+                            <input type="hidden" name="speed_pitch_hidden" id="sp_hidden_reapply" value="{{ speed_pitch_value|default:"0.00 semitones" }}">
+                            <button type="submit" style="width: 100%" data-index="{{ last_played_index }}">Reapply 🔁</button>
+                        </form>
+                    {% endif %}
                 </div>
             </div>
 
@@ -249,63 +255,115 @@
     {% if last_played_index is not None %}
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-            const audio = document.getElementById('audio');
-            const index = {{ last_played_index }};
-            const timestamp = new Date().getTime();
-
-            // Set audio source with cache-busting timestamp
-            audio.src = `/audio/${index}/?t=${timestamp}`;
-            audio.load();
-
             let currentIndex = {{ last_played_index|default:0 }};
             const total = {{ playlist|length }};
             if (!total) return;
 
+            const audio = document.getElementById('audio');
+            // const index = {{ last_played_index }};
+            const timestamp = new Date().getTime();
+            const reapplyForm = document.querySelector('.reapply-form');
+
             const prevTrackBtn = document.getElementById('prev-btn');
             const nextTrackBtn = document.getElementById('next-btn');
+            const playPauseBtn = document.getElementById('playPause')
+
+            const speedSlider = document.getElementById('speed_slider');
+            const pitchSlider = document.getElementById('pitch_slider');
+            const speedPitchValue = document.getElementById('speed_pitch_display');
+
+            // Set audio source with cache-busting timestamp
+            audio.src = `/audio/${currentIndex}/?t=${timestamp}`;
+            audio.load();
+            
+            prevTrackBtn.addEventListener('click', () => {
+                switchAndPlay(currentIndex - 1);
+            });
+            
+            nextTrackBtn.addEventListener('click', () => {
+                switchAndPlay(currentIndex + 1);
+            });
+            
+            async function reapplyCurrent() {
+                if (!reapplyForm) return;
+
+                const speed = speedSlider.noUiSlider.get();
+                const pitch = Math.round(parseFloat(pitchSlider.noUiSlider.get()));
+                const semitoneText = speedPitchValue.innerText;
+                
+                const speedReapply = document.getElementById("speed_reapply_hidden");
+                const pitchReapply = document.getElementById("pitch_reapply_hidden");
+                const spReapply = document.getElementById("sp_hidden_reapply");
+                
+                if (speedReapply) speedReapply.value = speed;
+                if (pitchReapply) pitchReapply.value = pitch;
+                if (spReapply) spReapply.value = semitoneText;
+
+                const fd = new FormData();
+                fd.append('index', String(currentIndex));
+                fd.append('speed_change_hidden', speedReapply.value);
+                fd.append('pitch_change_hidden', pitchReapply.value);
+                fd.append('speed_pitch_hidden',  spReapply.value);
+                
+                const resp = await fetch(reapplyForm.action, {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin'
+                });
+                
+                if (!resp.ok) {
+                    console.error('Reapply failed:', resp.status, await resp.text().catch(()=>'')); 
+                    return;
+                }
+                
+                play(currentIndex);
+            }
+
+            if (reapplyForm) {
+                reapplyForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    reapplyCurrent();
+                });
+            }
 
             function persistIndex(index) {
                 fetch(`/set_last_played/${index}/`, {
                 method: 'POST'
                 }).catch(() => {});
             }
-
+    
             function switchAndPlay(index) {
                 currentIndex = ((index % total) + total) % total;
+                play(currentIndex);
+            }
 
+            function play(index) {
                 audio.pause();
                 audio.removeAttribute('src');
                 audio.load();
-
+    
                 const ts = Date.now();
-                audio.src = `/audio/${currentIndex}/?t=${ts}`;
+                audio.src = `/audio/${index}/?t=${ts}`;
                 audio.load();
-
+    
                 const tryPlay = () => {
                     audio.play()
                         .then(() => {
-                            persistIndex(currentIndex);
+                            persistIndex(index);
+                            playPauseBtn.textContent = "⏸️";
                         })
                         .catch(err => {
                             console.warn('play() failed:', err);
                         });
                 };
-
+    
                 if (audio.readyState >= 3) {
                     tryPlay()
                     return;
                 }
-
+    
                 audio.addEventListener('canplay', tryPlay, { once: true });
             }
-
-            prevTrackBtn.addEventListener('click', () => {
-                switchAndPlay(currentIndex - 1);
-            });
-
-            nextTrackBtn.addEventListener('click', () => {
-                switchAndPlay(currentIndex + 1);
-            });
         });
     </script>
     {% endif %}

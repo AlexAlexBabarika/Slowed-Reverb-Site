@@ -43,18 +43,20 @@ def index(request):
                 artist = "Unknown"
 
             original_path = input_path.replace(f".{ext}", "_original.wav")
-            ffmpeg.input(input_path, format=input_format).output(original_path, format='wav').run(overwrite_output=True)
+            ffmpeg.input(input_path, format=input_format).\
+                output(original_path, format='wav').\
+                run(overwrite_output=True)
             output_path = original_path.replace('_original.wav', '_out.wav')
 
-            sr = int(get_sample_rate(open(input_path, 'rb')))
-            process_audio(sr, input_path, output_path, speed_change, pitch_change)
+            # sr = int(get_sample_rate(open(input_path, 'rb')))
+            # process_audio(sr, input_path, output_path, speed_change, pitch_change)
 
             os.remove(input_path)
             playlist.append({
                 "filename": filename,
                 "output_path": output_path,
                 "original_path": original_path,
-                "duration": get_audio_duration(output_path),
+                "duration": get_audio_duration(original_path),
                 "artist": artist
             })
 
@@ -137,14 +139,35 @@ def delete_from_playlist(request):
 @csrf_exempt
 def serve_audio(request, index):
     playlist = request.session.get('playlist', [])
+
     try:
-        track = playlist[int(index)]
-        path = track.get('output_path')
-        if os.path.exists(path):
-            return FileResponse(open(path, 'rb'), content_type='audio/wav')
-    except:
-        pass
-    return HttpResponse("Audio not found", status=404)
+        idx = int(index)
+    except (TypeError, ValueError):
+        return HttpResponse("Bad index", status=400)
+    if not (0 <= idx < len(playlist)):
+        return HttpResponse("Index out of range", status=400)
+
+    song = playlist[idx]
+    orig = song.get('original_path')
+    if not orig or not os.path.exists(orig):
+        return HttpResponse("Original file missing", status=404)
+
+    speed = float(request.session.get('speed_value', 1.0))
+    pitch = int(request.session.get('pitch_value', 0))
+
+    with open(orig, 'rb') as f:
+        sr = int(get_sample_rate(f))
+    tmp_out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+    process_audio(sr, orig, tmp_out, speed, pitch)
+
+    song["output_path"] = tmp_out
+    song["duration"] = get_audio_duration(tmp_out)
+    playlist[idx] = song
+    request.session['playlist'] = playlist
+    request.session['last_played_index'] = idx
+    request.session.modified = True
+
+    return FileResponse(open(tmp_out, 'rb'), content_type='audio/wav')
 
 @csrf_exempt
 def download_from_youtube(request):
@@ -291,3 +314,8 @@ def get_audio_duration(path):
         if stream["codec_type"] == "audio":
             return round(float(stream["duration"]))
     return 0
+
+def build_variant_path(original_path, speed_change, pitch_change):
+    base, _ = os.path.splitext(original_path)
+    speed_tag = int(round(speed_change * 1000))
+    return f"{base}_s{speed_tag}_p{pitch_change}.wav"
