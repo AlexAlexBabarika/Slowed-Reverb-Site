@@ -5,8 +5,9 @@ import time
 
 MARKERS = ("_original", "_out", "_reloaded", "_mid")
 ANON_TEMP_RE = re.compile(r"^(tmp|tmp\w+|[^.]+)\.wav$", re.IGNORECASE)
+FILES: set = {}
 
-def cleanup_temp_old_files(active_paths=(), max_age_seconds=0):
+def cleanup_temp_files(active_paths=(), max_age_seconds=0):
     temp_dir = tempfile.gettempdir()
     now = time.time()
 

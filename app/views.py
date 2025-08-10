@@ -6,7 +6,7 @@ from mutagen import File as MutagenFile
 import os, ffmpeg, tempfile, math, time
 import yt_dlp
 
-from app.misc import cleanup_temp_old_files
+from app.misc import cleanup_temp_files
 
 format_map = {
     'mp3': 'mp3', 'wav': 'wav', 'flac': 'flac', 'm4a': 'mov',
@@ -49,9 +49,6 @@ def index(request):
                 output(original_path, format='wav').\
                 run(overwrite_output=True)
             output_path = original_path.replace('_original.wav', '_out.wav')
-
-            # sr = int(get_sample_rate(open(input_path, 'rb')))
-            # process_audio(sr, input_path, output_path, speed_change, pitch_change)
 
             os.remove(input_path)
             playlist.append({
@@ -270,7 +267,7 @@ def set_last_played(request, index):
 @csrf_exempt
 def cleanup_view(request):
     active = collect_active_paths_from_session(request)
-    cleanup_temp_old_files(active_paths=active)
+    cleanup_temp_files(active_paths=active)
     return JsonResponse({"status": "ok"})
 
 def process_audio(sr, input_path, output_path, speed_change, pitch_change):

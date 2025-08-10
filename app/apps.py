@@ -9,11 +9,11 @@ class AppConfig(AppConfig):
     name = 'app'
 
     def ready(self):
-        atexit.register(misc.cleanup_all_temp)
+        atexit.register(misc.cleanup_temp_files)
         atexit.register(misc.clear_all_sessions)
 
         def handle_exit(signum, frame):
-            misc.cleanup_all_temp()
+            misc.cleanup_temp_files()
             misc.clear_all_sessions()
             sys.exit(0)
 

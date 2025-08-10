@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (audio.paused) {    
             setTimeout(() => {
                     audio.play().then(() => {
-                        playPauseBtn.textContent = '⏸️';
+                        playPauseBtn.textContent = '⏸';
                         console.log("▶️ Playing!");
                     }).catch(err => {
                         console.warn("🚫 Autoplay blocked:", err);
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 10); // slight delay is important!
         } else {
             audio.pause();
-            playPauseBtn.textContent = '▶️';
+            playPauseBtn.textContent = '▶';
         }
     });
 

@@ -103,7 +103,7 @@
                             <input type="hidden" name="speed_change_hidden" id="speed_reapply_hidden" value="{{ speed_value }}">
                             <input type="hidden" name="pitch_change_hidden" id="pitch_reapply_hidden" value="{{ pitch_value }}">
                             <input type="hidden" name="speed_pitch_hidden" id="sp_hidden_reapply" value="{{ speed_pitch_value|default:"0.00 semitones" }}">
-                            <button type="submit" style="width: 100%" data-index="{{ last_played_index }}">Reapply 🔁</button>
+                            <button type="submit" style="width: 100%" data-index="{{ last_played_index }}">Reapply</button>
                         </form>
                     {% endif %}
                 </div>
@@ -169,7 +169,7 @@
                                     <form method="post" action="{% url 'delete_from_playlist' %}" style="margin: 0;">
                                         {% csrf_token %}
                                         <input type="hidden" name="index" value="{{ forloop.counter0 }}">
-                                        <button type="submit" style="font-size: 16px;">🗑️</button>
+                                        <button type="submit" style="font-size: 24px; min-width: 2.5vw;">✖︎</button>
                                     </form>
 
                                     <!-- ▶️ Reload/Play -->
@@ -179,7 +179,7 @@
                                         <input type="hidden" name="speed_change_hidden" id="speed_reload_hidden_{{ forloop.counter0 }}" value="{{ speed_value }}">
                                         <input type="hidden" name="pitch_change_hidden" id="pitch_reload_hidden_{{ forloop.counter0 }}" value="{{ pitch_value }}">
                                         <input type="hidden" name="speed_pitch_hidden" id="sp_hidden_reload_{{ forloop.counter0 }}" value="{{ speed_pitch_value|default:"0.00 semitones" }}">
-                                        <button type="submit" class="reload-and-play" style="font-size: 16px;" data-index="{{ forloop.counter0 }}">▶️</button>
+                                        <button type="submit" class="reload-and-play" style="font-size: 16px; min-width: 2.5vw;" data-index="{{ forloop.counter0 }}">▶</button>
                                     </form>
                                 </div>
                             </div>
@@ -197,7 +197,7 @@
                         <div>Enter YouTube url:</div>
                         <div style="display: flex; align-items: center; gap: 0.5em;">
                             <input id="url-input" type="url" style="width: 100%;" name="youtube_url" placeholder="YouTube URL" required>
-                            <button type="button" onclick="submitYouTubeForm()">⬇️</button>
+                            <button type="button" onclick="submitYouTubeForm()">⬇</button>
                         </div>
                         <script>
                             function submitYouTubeForm() {
@@ -233,13 +233,13 @@
                     <audio id="audio" src=""></audio>
 
                     <div class="controls">
-                        <button id="prev-btn">⏮️</button>
-                        <button id="playPause">▶️</button>
-                        <button id="next-btn">⏭️</button>
+                        <button id="prev-btn">⏮</button>
+                        <button id="playPause" style="min-width: 2.5vw;">⏯</button>
+                        <button id="next-btn">⏭</button>
                         <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
                         <div id="seek-slider" style="flex-grow: 1; width: 100%"></div>
                         <div id="volume-slider" style="flex-grow: 1; width: 100%"></div>
-                        <a id="download-btn" href="#" download>⬇️</a>
+                        <a id="download-btn" href="#" download><span>⬇</span></a>
                     </div>
                 </div>
                 {% endif %}
@@ -349,7 +349,6 @@
                     audio.play()
                         .then(() => {
                             persistIndex(index);
-                            playPauseBtn.textContent = "⏸️";
                         })
                         .catch(err => {
                             console.warn('play() failed:', err);

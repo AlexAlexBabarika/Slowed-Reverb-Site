@@ -66,7 +66,6 @@ window.addEventListener('DOMContentLoaded', () => {
     speedPitchValue.textContent = semitones;
     speedPitchHidden.value = semitones;
 
-    // 🔁 Reload form: inject current slider values before submit
     document.querySelectorAll('.reload-form').forEach(form => {
         form.addEventListener('submit', function () {
             const index = form.querySelector('[name="index"]').value;
