@@ -2,3 +2,5 @@ Django
 ffmpeg-python
 mutagen
 yt-dlp
+pedalboard
+numpy

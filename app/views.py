@@ -1,15 +1,29 @@
-import uuid
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, FileResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from mutagen import File as MutagenFile
-import os, ffmpeg, tempfile, math, time
-import yt_dlp
+import os, tempfile, time, yt_dlp, uuid
 
-from app.misc import cleanup_temp_files
+from pedalboard.io import AudioFile
+import numpy as np
+from .misc import *
+from .effects import * 
+
+import logging, faulthandler, sys, traceback
+faulthandler.enable()  # helps catch native crashes (segfaults) and prints stack to stderr
+
+# Basic logging configuration (adjust level as needed)
+logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s] %(levelname)s %(message)s')
+logger = logging.getLogger(__name__)
+
+# Feature toggles for debugging
+ENABLE_REVERB = True
+ENABLE_LOWPASS = True   # you recently added lowpass; can disable to see if crash stops
+ENABLE_PITCH = True
+ENABLE_SPEED = True
 
 format_map = {
-    'mp3': 'mp3', 'wav': 'wav', 'flac': 'flac', 'm4a': 'mov',
+    'mp3': 'mp3', 'wav': 'wav', 'flac': 'flac', 'm4a': 'm4a',
     'aac': 'aac', 'ogg': 'ogg', 'opus': 'opus',
 }
 
@@ -26,7 +40,6 @@ def index(request):
             filename = file.name
             ext = os.path.splitext(filename)[1].lower().replace('.', '')
             input_format = format_map.get(ext)
-
             if not input_format:
                 continue
 
@@ -35,22 +48,36 @@ def index(request):
                 tmp_in.flush()
                 input_path = tmp_in.name
 
+            # Try to read metadata (artist)
             artist = ""
             try:
                 audio_meta = MutagenFile(input_path, easy=True)
-                if (audio_meta):
+                if audio_meta:
                     artist = audio_meta.get("artist", ["Unknown"])[0]
             except Exception as e:
                 print("Metadata error:", e)
                 artist = "Unknown"
 
+            # Convert to WAV "original"
             original_path = input_path.replace(f".{ext}", "_original.wav")
-            ffmpeg.input(input_path, format=input_format).\
-                output(original_path, format='wav').\
-                run(overwrite_output=True)
+            try:
+                to_wav_with_pedalboard(input_path, original_path)
+            except Exception as e:
+                # If conversion fails, skip this file
+                print(f"Pedalboard read/write failed: {e}")
+                try:
+                    os.remove(input_path)
+                except:
+                    pass
+                continue
+
             output_path = original_path.replace('_original.wav', '_out.wav')
 
-            os.remove(input_path)
+            try:
+                os.remove(input_path)
+            except:
+                pass
+
             playlist.append({
                 "filename": filename,
                 "output_path": output_path,
@@ -64,7 +91,7 @@ def index(request):
         request.session["pitch_value"] = pitch_change
         request.session["speed_pitch_value"] = speed_pitch_value
         if "last_played_index" not in request.session:
-            request.session["last_played_index"] = 0  # First upload
+            request.session["last_played_index"] = 0
         return redirect('index')
 
     # GET
@@ -106,8 +133,10 @@ def reload_audio(request):
     speed_pitch_value = request.POST.get('speed_pitch_hidden', '')
 
     output_path = input_path.replace('_original.wav', '_reloaded.wav')
-    sr = int(get_sample_rate(open(input_path, 'rb')))
-    process_audio(sr, input_path, output_path, speed_change, pitch_change)
+    try:
+        process_with_pedalboard(input_path, output_path, speed_change, pitch_change)
+    except Exception as e:
+        return HttpResponse(f"Reload error: {e}", status=500)
 
     song["output_path"] = output_path
     song["duration"] = get_audio_duration(output_path)
@@ -154,10 +183,11 @@ def serve_audio(request, index):
     speed = float(request.session.get('speed_value', 1.0))
     pitch = int(request.session.get('pitch_value', 0))
 
-    with open(orig, 'rb') as f:
-        sr = int(get_sample_rate(f))
     tmp_out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
-    process_audio(sr, orig, tmp_out, speed, pitch)
+    try:
+        process_with_pedalboard(orig, tmp_out, speed, pitch)
+    except Exception as e:
+        return HttpResponse(f"Processing error: {e}", status=500)
 
     song["output_path"] = tmp_out
     song["duration"] = get_audio_duration(tmp_out)
@@ -177,21 +207,19 @@ def download_from_youtube(request):
     if not url:
         return HttpResponse("No URL provided", status=400)
 
-    # Generate unique base name
     uid = str(uuid.uuid4())
     temp_dir = tempfile.gettempdir()
-    download_base = os.path.join(temp_dir, uid)  # no extension
+    download_base = os.path.join(temp_dir, uid)
     download_template = f"{download_base}.%(ext)s"
     final_mp3 = f"{download_base}.mp3"
     original_path = f"{download_base}_original.wav"
     output_path = f"{download_base}_out.wav"
 
-    # yt-dlp options with browser cookies
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': download_template,
         'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
+            'key': 'FFmpegExtractAudio',   # yt-dlp still uses ffmpeg for demuxing; keep or remove this to save as original format
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
@@ -205,26 +233,27 @@ def download_from_youtube(request):
             info = ydl.extract_info(url, download=True)
             video_title = info.get("title", "Unknown Title")
             author_name = info.get("uploader", "Unknown Author")
-
     except Exception as e:
         return HttpResponse(f"yt-dlp failed: {e}", status=500)
 
-    # Verify file exists
     if not os.path.exists(final_mp3):
         return HttpResponse(f"Download failed. File not found: {final_mp3}", status=500)
 
-    # Convert to WAV
+    # Convert mp3 → wav via Pedalboard
     try:
-        ffmpeg.input(final_mp3).output(original_path, format='wav').run(overwrite_output=True)
+        to_wav_with_pedalboard(final_mp3, original_path)
     except Exception as e:
-        return HttpResponse(f"FFmpeg conversion failed: {e}", status=500)
+        return HttpResponse(f"Conversion failed: {e}", status=500)
 
     # Process audio
-    sr = int(get_sample_rate(open(final_mp3, 'rb')))
     speed_change = float(request.POST.get('speed_change_hidden', 1.0))
     pitch_change = int(request.POST.get('pitch_change_hidden', 0))
     speed_pitch_value = request.POST.get('speed_pitch_hidden', '')
-    process_audio(sr, original_path, output_path, speed_change, pitch_change)
+
+    try:
+        process_with_pedalboard(original_path, output_path, speed_change, pitch_change)
+    except Exception as e:
+        return HttpResponse(f"Processing failed: {e}", status=500)
 
     # Add to session playlist
     playlist = request.session.get("playlist", [])
@@ -253,7 +282,6 @@ def download_from_youtube(request):
 def set_last_played(request, index):
     if request.method != "POST":
         return HttpResponseBadRequest("Invalid request method")
-
     try:
         index = int(index)
     except ValueError:
@@ -261,7 +289,6 @@ def set_last_played(request, index):
 
     request.session['last_played_index'] = index
     request.session.modified = True
-
     return JsonResponse({"status": "ok", "last_played_index": index})
 
 @csrf_exempt
@@ -270,55 +297,61 @@ def cleanup_view(request):
     cleanup_temp_files(active_paths=active)
     return JsonResponse({"status": "ok"})
 
-def process_audio(sr, input_path, output_path, speed_change, pitch_change):
+def process_with_pedalboard(in_path: str, out_path: str, speed_change: float, pitch_change: int):
     try:
-        if pitch_change != 0 and abs(speed_change - 1.0) > 1e-3:
-            with tempfile.NamedTemporaryFile(suffix="_mid.wav", delete=False) as mid:
-                mid_path = mid.name
-            change_speed(sr, input_path, mid_path, speed_change)
-            change_pitch(sr, mid_path, output_path, pitch_change)
-            os.remove(mid_path)
-        elif pitch_change != 0:
-            change_pitch(sr, input_path, output_path, pitch_change)
-        else:
-            change_speed(sr, input_path, output_path, speed_change)
-    except ffmpeg.Error as e:
-        return HttpResponse(f"Reload error: {e.stderr.decode()}", status=500)
+        with AudioFile(in_path) as f:
+            sr = f.samplerate or 44100
+            frames = getattr(f, "frames", None)
+            if isinstance(frames, int) and frames > 0:
+                samples = f.read(frames)
+            else:
+                chunks = []
+                while True:
+                    buf = f.read(262144)
+                    if buf.size == 0:
+                        break
+                    chunks.append(buf)
+                if not chunks:
+                    raise ValueError("No audio data read (empty file or unsupported format)")
+                samples = chunks[0] if len(chunks) == 1 else np.concatenate(chunks, axis=0)
 
-def change_speed(sr, input_path, output_path, speed_change):
-    ffmpeg.input(input_path) \
-        .filter('asetrate', int(sr * speed_change)) \
-        .output(output_path, ar=sr, acodec='pcm_s16le', format='wav') \
-        .run(overwrite_output=True, capture_stdout=True, capture_stderr=True)
+    except Exception as e:
+        print("Failed reading audio via pedalboard")
 
-def change_pitch(sr, input_path, output_path, pitch_change):
-    pitch_ratio = math.pow(2, pitch_change / 12)
-    ffmpeg.input(input_path) \
-        .filter('rubberband', pitch=pitch_ratio) \
-        .output(output_path, ar=sr, acodec='pcm_s16le', format='wav') \
-        .run(overwrite_output=True, capture_stdout=True, capture_stderr=True)
-
-def get_sample_rate(file_obj):
-    file_bytes = file_obj.read()
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-        tmp.write(file_bytes)
-        tmp.flush()
-        path = tmp.name
     try:
-        probe = ffmpeg.probe(path)
-        for stream in probe["streams"]:
-            if stream["codec_type"] == "audio":
-                return int(stream["sample_rate"])
-    finally:
-        os.unlink(path)
-    return 44100
+        if samples.size == 0:
+            raise ValueError("Decoded audio has zero samples")
+        if samples.ndim == 2 and samples.shape[0] < samples.shape[1]:
+            samples = samples.T
+        if samples.dtype != np.float32:
+            if np.issubdtype(samples.dtype, np.integer):
+                samples = samples.astype(np.float32) / float(np.iinfo(samples.dtype).max)
+            else:
+                samples = samples.astype(np.float32)
+        if not np.isfinite(samples).all():
+            samples = np.nan_to_num(samples, nan=0.0, posinf=0.0, neginf=0.0)
+    except Exception as e:
+        print("Normalization failed")
 
-def get_audio_duration(path):
-    probe = ffmpeg.probe(path)
-    for stream in probe["streams"]:
-        if stream["codec_type"] == "audio":
-            return round(float(stream["duration"]))
-    return 0
+    if pitch_change != 0 and abs(speed_change - 1.0) > 1e-3:
+        samples, _ = change_speed(sr, samples, speed_change)
+        samples = change_pitch(sr, samples, pitch_change)
+    elif pitch_change != 0:
+        samples = change_pitch(sr, samples, pitch_change)
+    else: 
+        samples, _ = change_speed(sr, samples, speed_change)
+        
+    samples = lowpass(sr, samples, 1000)
+    samples = reverb(sr, samples)
+
+    try:
+        num_channels = 1 if samples.ndim == 1 else samples.shape[1]
+        logger.debug("Writing output channels=%d dtype=%s", num_channels, samples.dtype)
+        with AudioFile(out_path, 'w', samplerate=sr, num_channels=num_channels) as g:
+            g.write(samples.astype(np.float32, copy=False))
+
+    except Exception as e:
+        print("writing output failed")
 
 def collect_active_paths_from_session(request):
     active = []
