@@ -1,26 +1,14 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, FileResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from mutagen import File as MutagenFile
-import os, tempfile, time, yt_dlp, uuid
+import os, tempfile, time, yt_dlp, uuid, json
 
 from pedalboard.io import AudioFile
 import numpy as np
 from .misc import *
 from .effects import * 
-
-import logging, faulthandler, sys, traceback
-faulthandler.enable()  # helps catch native crashes (segfaults) and prints stack to stderr
-
-# Basic logging configuration (adjust level as needed)
-logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s] %(levelname)s %(message)s')
-logger = logging.getLogger(__name__)
-
-# Feature toggles for debugging
-ENABLE_REVERB = True
-ENABLE_LOWPASS = True   # you recently added lowpass; can disable to see if crash stops
-ENABLE_PITCH = True
-ENABLE_SPEED = True
 
 format_map = {
     'mp3': 'mp3', 'wav': 'wav', 'flac': 'flac', 'm4a': 'm4a',
@@ -30,10 +18,6 @@ format_map = {
 @csrf_exempt
 def index(request):
     if request.method == 'POST' and request.FILES.getlist('audio_file'):
-        speed_change = float(request.POST.get('speed_change_hidden', 1.0))
-        pitch_change = int(request.POST.get('pitch_change_hidden', 0))
-        speed_pitch_value = request.POST.get('speed_pitch_hidden', '')
-
         playlist = request.session.get("playlist", [])
 
         for file in request.FILES.getlist('audio_file'):
@@ -87,20 +71,18 @@ def index(request):
             })
 
         request.session["playlist"] = playlist
-        request.session["speed_value"] = speed_change
-        request.session["pitch_value"] = pitch_change
-        request.session["speed_pitch_value"] = speed_pitch_value
         if "last_played_index" not in request.session:
             request.session["last_played_index"] = 0
         return redirect('index')
 
-    # GET
-    speed_value = request.session.get('speed_value', 1.0)
-    pitch_value = request.session.get('pitch_value', 0)
-    speed_pitch_value = request.session.get('speed_pitch_value', '0.00 semitones')
+    speed_value = request.session.get('speed', 1.0)
+    pitch_value = request.session.get('pitch', 0.0)
+    speed_pitch_value = request.session.get('speed_pitch', '0.00 semitones')
     playlist = request.session.get("playlist", [])
     audio_available = any(os.path.exists(song["output_path"]) for song in playlist)
     last_played_index = request.session.get('last_played_index', None)
+    lowpass_hz = int(request.session.get('lowpass', 20000))
+    reverb = float(request.session.get('reverb', 0.0))
 
     return render(request, "app/index.html", {
         "audio_available": audio_available,
@@ -109,7 +91,9 @@ def index(request):
         "speed_pitch_value": speed_pitch_value,
         "playlist": playlist,
         "timestamp": int(time.time()),
-        "last_played_index": last_played_index
+        "last_played_index": last_played_index, 
+        "lowpass": lowpass_hz,
+        "reverb": reverb
     })
 
 @csrf_exempt
@@ -128,13 +112,14 @@ def reload_audio(request):
     if not input_path or not os.path.exists(input_path):
         return HttpResponse("Original file missing", status=404)
 
-    speed_change = float(request.POST.get('speed_change_hidden', 1.0))
-    pitch_change = int(request.POST.get('pitch_change_hidden', 0))
-    speed_pitch_value = request.POST.get('speed_pitch_hidden', '')
+    speed = float(request.session.get('speed', 1.0))
+    pitch = float(request.session.get('pitch', 0.0))
+    lowpass_hz = int(request.session.get('lowpass', 20000))
+    reverb = float(request.session.get('reverb', 0.0))
 
     output_path = input_path.replace('_original.wav', '_reloaded.wav')
     try:
-        process_with_pedalboard(input_path, output_path, speed_change, pitch_change)
+        process_audio(input_path, output_path, speed, pitch, lowpass_hz, reverb)
     except Exception as e:
         return HttpResponse(f"Reload error: {e}", status=500)
 
@@ -143,10 +128,8 @@ def reload_audio(request):
     playlist[index] = song
 
     request.session['playlist'] = playlist
-    request.session['speed_value'] = speed_change
-    request.session['pitch_value'] = pitch_change
-    request.session['speed_pitch_value'] = speed_pitch_value
     request.session['last_played_index'] = index
+    request.session.modified = True
 
     return redirect('index')
 
@@ -180,12 +163,14 @@ def serve_audio(request, index):
     if not orig or not os.path.exists(orig):
         return HttpResponse("Original file missing", status=404)
 
-    speed = float(request.session.get('speed_value', 1.0))
-    pitch = int(request.session.get('pitch_value', 0))
+    speed = float(request.session.get('speed', 1.0))
+    pitch = float(request.session.get('pitch', 0.0))
+    lowpass_hz = int(request.session.get('lowpass', 20000))
+    reverb = float(request.session.get('reverb', 0.0))
 
     tmp_out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
     try:
-        process_with_pedalboard(orig, tmp_out, speed, pitch)
+        process_audio(orig, tmp_out, speed, pitch, lowpass_hz, reverb)
     except Exception as e:
         return HttpResponse(f"Processing error: {e}", status=500)
 
@@ -197,6 +182,20 @@ def serve_audio(request, index):
     request.session.modified = True
 
     return FileResponse(open(tmp_out, 'rb'), content_type='audio/wav')
+
+@require_POST
+def save_values_to_session(request):
+    data = json.loads(request.body.decode("utf-8"))
+
+    request.session['speed'] = float(data.get('speed', 1.0))
+    request.session['pitch'] = int(data.get('pitch', 0))
+    request.session['speed_pitch'] = data.get('speed_pitch', '')
+
+    request.session['lowpass'] = int(data.get('lowpass', 20000))
+    request.session['reverb'] = float(data.get('reverb', 0.0))
+    request.session.modified = True
+
+    return JsonResponse({"ok": True})
 
 @csrf_exempt
 def download_from_youtube(request):
@@ -219,7 +218,7 @@ def download_from_youtube(request):
         'format': 'bestaudio/best',
         'outtmpl': download_template,
         'postprocessors': [{
-            'key': 'FFmpegExtractAudio',   # yt-dlp still uses ffmpeg for demuxing; keep or remove this to save as original format
+            'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
@@ -245,13 +244,13 @@ def download_from_youtube(request):
     except Exception as e:
         return HttpResponse(f"Conversion failed: {e}", status=500)
 
-    # Process audio
-    speed_change = float(request.POST.get('speed_change_hidden', 1.0))
-    pitch_change = int(request.POST.get('pitch_change_hidden', 0))
-    speed_pitch_value = request.POST.get('speed_pitch_hidden', '')
+    speed = float(request.session.get('speed', 1.0))
+    pitch = float(request.session.get('pitch', 0.0))
+    lowpass_hz = int(request.session.get('lowpass', 20000))
+    reverb = float(request.session.get('reverb', 0.0))
 
     try:
-        process_with_pedalboard(original_path, output_path, speed_change, pitch_change)
+        process_audio(original_path, output_path, speed, pitch, lowpass_hz, reverb)
     except Exception as e:
         return HttpResponse(f"Processing failed: {e}", status=500)
 
@@ -265,12 +264,8 @@ def download_from_youtube(request):
         "artist": author_name,
     })
     request.session["playlist"] = playlist
-    request.session["speed_value"] = speed_change
-    request.session["pitch_value"] = pitch_change
-    request.session["speed_pitch_value"] = speed_pitch_value
     request.session["last_played_index"] = len(playlist) - 1
 
-    # Clean up intermediate mp3
     try:
         os.remove(final_mp3)
     except:
@@ -297,7 +292,9 @@ def cleanup_view(request):
     cleanup_temp_files(active_paths=active)
     return JsonResponse({"status": "ok"})
 
-def process_with_pedalboard(in_path: str, out_path: str, speed_change: float, pitch_change: int):
+def process_audio(in_path: str, out_path: str,
+                speed_change: float, pitch_change: int,
+                lowpass_hz: int, reverb_amount: float):
     try:
         with AudioFile(in_path) as f:
             sr = f.samplerate or 44100
@@ -315,7 +312,7 @@ def process_with_pedalboard(in_path: str, out_path: str, speed_change: float, pi
                     raise ValueError("No audio data read (empty file or unsupported format)")
                 samples = chunks[0] if len(chunks) == 1 else np.concatenate(chunks, axis=0)
 
-    except Exception as e:
+    except:
         print("Failed reading audio via pedalboard")
 
     try:
@@ -330,7 +327,7 @@ def process_with_pedalboard(in_path: str, out_path: str, speed_change: float, pi
                 samples = samples.astype(np.float32)
         if not np.isfinite(samples).all():
             samples = np.nan_to_num(samples, nan=0.0, posinf=0.0, neginf=0.0)
-    except Exception as e:
+    except:
         print("Normalization failed")
 
     if pitch_change != 0 and abs(speed_change - 1.0) > 1e-3:
@@ -340,15 +337,23 @@ def process_with_pedalboard(in_path: str, out_path: str, speed_change: float, pi
         samples = change_pitch(sr, samples, pitch_change)
     else: 
         samples, _ = change_speed(sr, samples, speed_change)
-        
-    samples = lowpass(sr, samples, 1000)
-    samples = reverb(sr, samples)
+
+    try:
+        if lowpass_hz and lowpass_hz < 20000:
+            samples = lowpass(sr, samples, lowpass_hz)
+        if reverb_amount and reverb_amount > 0.0:
+            samples = reverb(sr, samples, reverb_amount)
+    except Exception as e:
+        print("Effect stage failed:", e)
 
     try:
         num_channels = 1 if samples.ndim == 1 else samples.shape[1]
-        logger.debug("Writing output channels=%d dtype=%s", num_channels, samples.dtype)
         with AudioFile(out_path, 'w', samplerate=sr, num_channels=num_channels) as g:
             g.write(samples.astype(np.float32, copy=False))
+
+        print(f"Processed:\n -Speed: {speed_change}\n\
+            -Pitch: {pitch_change}\n\
+            -Lowpass: {lowpass_hz}\n -Reverb: {reverb_amount}")
 
     except Exception as e:
         print("writing output failed")

@@ -16,7 +16,6 @@ def resample_speed(samples: np.ndarray, speed_change):
 
     n = samples.shape[0]
     idx_src = np.arange(n, dtype=np.float64)
-    # Use step = speed_change so >1 speeds up (fewer samples), <1 slows down (more samples)
     idx_tgt = np.arange(0, n, speed_change, dtype=np.float64)
 
     if samples.ndim == 1:
@@ -45,15 +44,32 @@ def lowpass(sample_rate: int, samples: np.ndarray, cutoff_hz: float):
     board = Pedalboard([LowpassFilter(cutoff_frequency_hz=float(cutoff_hz))])
     return board(samples, sample_rate=sample_rate)
 
-def reverb(sample_rate: int, samples: np.ndarray):
+def reverb(sample_rate: int, samples: np.ndarray, amount: float = 0.3):
     samples = ensure_float32(samples)
+    amount = float(max(0.0, min(1.0, amount)))
+
+    if amount == 0.0:
+        return samples
+
+    dry = samples
 
     if os.path.exists(HALL_IR):
         try:
-            board = Pedalboard([Convolution(HALL_IR)])
-            return board(samples, sample_rate=sample_rate)
+            wet = Pedalboard([Convolution(HALL_IR)])(samples, sample_rate=sample_rate)
+            # Manual dry/wet mix (Convolution has no built-in mix control)
+            return (dry * (1.0 - amount) + wet * amount).astype(np.float32)
         except Exception as e:
             print(f"Reverb IR failed ({e})")
 
-    board = Pedalboard([Reverb(room_size=0.8, damping=0.3, wet_level=0.3, dry_level=0.7, width=0.9)])
+    wet_level = amount
+    dry_level = 1.0 - amount
+    board = Pedalboard([
+        Reverb(
+            room_size=0.8,
+            damping=0.3,
+            wet_level=wet_level,
+            dry_level=dry_level,
+            width=0.9
+        )
+    ])
     return board(samples, sample_rate=sample_rate)

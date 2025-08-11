@@ -89,21 +89,18 @@
                             <span id="speed_pitch_display">{{ speed_pitch_value|default:"0.00 semitones"}}</span>
                         </div>
                     </div>
-                    <div id="speed_slider" style="width: 100%;"></div>
+                    <div id="speed_slider" style="width: 100%;" data-init="{{ speed_value|default:'1.0' }}"></div>
 
                     <div style="font-size: 24px; font-weight: 500;">
                         Pitch (semitones): &nbsp;<span id="pitch_display">{{ pitch_value|default:"0" }}</span>
                     </div>
-                    <div id="pitch_slider" style="width: 100%"></div>
-
+                    <div id="pitch_slider" style="width: 100%" data-init="{{ pitch_value|default:'0' }}"></div>
+                    
                     {% if last_played_index is not None %}
                         <form method="post" style="margin-bottom: 0; margin-top: auto;" action="{% url 'reload_audio' %}" class="reapply-form">
                             {% csrf_token %}
                             <input type="hidden" name="index" value="{{ last_played_index }}">
-                            <input type="hidden" name="speed_change_hidden" id="speed_reapply_hidden" value="{{ speed_value }}">
-                            <input type="hidden" name="pitch_change_hidden" id="pitch_reapply_hidden" value="{{ pitch_value }}">
-                            <input type="hidden" name="speed_pitch_hidden" id="sp_hidden_reapply" value="{{ speed_pitch_value|default:"0.00 semitones" }}">
-                            <button type="submit" style="width: 100%" data-index="{{ last_played_index }}">Reapply</button>
+                            <button type="submit" style="width: 100%" data-index="{{ last_played_index }}">Apply speed & effects</button>
                         </form>
                     {% endif %}
                 </div>
@@ -112,7 +109,26 @@
             <!-- 🛠 WIP Effects -->
             <div class="box" style="font-size: 32;">
                 <div>Apply effects 🤖</div>
-                <div style="margin-left: auto; margin-right: auto;">W.I.P</div>
+
+                <div style="display: flex; flex-direction: column; gap: 1vw; height: 100%;">
+                    <div style="font-size: 24px; font-weight: 500;">
+                        Low-pass: &nbsp;<span id="lowpass-display">{{lowpass}}</span>
+                    </div>
+                    <div id="lowpass-slider" style="width: 100%;" data-init="{{lowpass|default:'20000'}}"></div>
+
+                    <div style="font-size: 24px; font-weight: 500;">
+                        Reverb: &nbsp;<span id="reverb-display">{{reverb}}</span>
+                    </div>
+                    <div id="reverb-slider" style="width: 100%" data-init="{{reverb|default:'0.00'}}"></div>
+
+                    <!-- {% if last_played_index is not None %}
+                        <form method="post" style="margin-bottom: 0; margin-top: auto;" action="{% url 'reload_audio' %}" class="reapply-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="index" value="{{ last_played_index }}">
+                            <button type="submit" style="width: 100%" data-index="{{ last_played_index }}">Apply effects</button>
+                        </form>
+                    {% endif %} -->
+                </div>
             </div>
 
             <!-- 📁 Playlist & Upload -->
@@ -176,9 +192,6 @@
                                     <form method="post" action="{% url 'reload_audio' %}" class="reload-form" style="margin: 0;">
                                         {% csrf_token %}
                                         <input type="hidden" name="index" value="{{ forloop.counter0 }}">
-                                        <input type="hidden" name="speed_change_hidden" id="speed_reload_hidden_{{ forloop.counter0 }}" value="{{ speed_value }}">
-                                        <input type="hidden" name="pitch_change_hidden" id="pitch_reload_hidden_{{ forloop.counter0 }}" value="{{ pitch_value }}">
-                                        <input type="hidden" name="speed_pitch_hidden" id="sp_hidden_reload_{{ forloop.counter0 }}" value="{{ speed_pitch_value|default:"0.00 semitones" }}">
                                         <button type="submit" class="reload-and-play" style="font-size: 16px; min-width: 2.5vw;" data-index="{{ forloop.counter0 }}">▶</button>
                                     </form>
                                 </div>
@@ -190,9 +203,6 @@
 
                 <form id="youtubeForm" action="{% url 'download_from_youtube' %}" method="POST" enctype="multipart/form-data" style="margin-top: auto; margin-bottom: -0.5vw"">
                     {% csrf_token %}
-                    <input type="hidden" name="speed_change_hidden" value="1.0">
-                    <input type="hidden" name="pitch_change_hidden" value="0">
-                    <input type="hidden" name="speed_pitch_hidden" value="0.00 semitones">
                     <div style="display: flex; flex-direction: column; gap: 0.5vw">
                         <div>Enter YouTube url:</div>
                         <div style="display: flex; align-items: center; gap: 0.5em;">
@@ -200,13 +210,49 @@
                             <button type="button" onclick="submitYouTubeForm()">⬇</button>
                         </div>
                         <script>
-                            function submitYouTubeForm() {
+                            async function submitYouTubeForm() {
                                 const urlInput = document.getElementById("url-input");
                                 const url = urlInput.value.trim();
                                 if (!url.startsWith("http")) return;
 
-                                showLoading();
-                                document.getElementById("youtubeForm").submit();
+                                function getCookie(name) {
+                                    const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+                                    return m ? decodeURIComponent(m.pop()) : null;
+                                }
+
+                                // Persist current sliders to session
+                                const speedEl = document.getElementById('speed_slider');
+                                const pitchEl = document.getElementById('pitch_slider');
+                                const lowEl   = document.getElementById('lowpass-slider');
+                                const revEl   = document.getElementById('reverb-slider');
+
+                                const speed = speedEl?.noUiSlider ? parseFloat(speedEl.noUiSlider.get()) : 1.0;
+                                const pitch = pitchEl?.noUiSlider ? parseFloat(pitchEl.noUiSlider.get()) : 0.0;
+                                let semitones = (12 * Math.log2(speed)).toFixed(2);
+                                if (parseFloat(semitones) > 0) semitones = "+" + semitones;
+                                const speed_pitch = `${semitones} semitones`;
+                                const lowpass = lowEl?.noUiSlider ? parseInt(lowEl.noUiSlider.get()) : 20000;
+                                const reverb  = revEl?.noUiSlider  ? parseFloat(revEl.noUiSlider.get()) : 0.0;
+
+                                try {
+                                    const overlay = document.getElementById('loading-overlay');
+                                    if (overlay) overlay.style.display = 'flex';
+
+                                    await fetch("/save_values_to_session/", {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                            "X-CSRFToken": getCookie("csrftoken")
+                                        },
+                                        credentials: "same-origin",
+                                        body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb })
+                                    });
+
+                                    document.getElementById("youtubeForm").submit();
+                                } catch (e) {
+                                    console.warn("Failed to persist session before YouTube submit:", e);
+                                    document.getElementById("youtubeForm").submit();
+                                }
                             }
                         </script>
                     </div>
@@ -215,10 +261,6 @@
                 <!-- 📤 Upload Form -->
                 <form id="uploadForm" method="post" enctype="multipart/form-data" style="margin-bottom: 0;">
                     {% csrf_token %}
-                    <input type="hidden" name="speed_change_hidden" id="speed_hidden" value="{{ speed_value|default:"1.00" }}">
-                    <input type="hidden" name="pitch_change_hidden" id="pitch_hidden" value="{{ pitch_value|default:"0" }}">
-                    <input type="hidden" name="speed_pitch_hidden" id="sp_hidden" value="{{ speed_pitch_value|default:"0.00 semitones" }}">
-
                     <input type="file" id="fileInput" name="audio_file" accept="audio/*" style="display: none;" multiple>
                     <button type="button" style="width: 100%;" onclick="document.getElementById('fileInput').click()">Choose song(s)</button>
                 </form>
@@ -251,6 +293,7 @@
     <script src="{% static 'app/js/player.js' %}"></script>
     <script src="{% static 'app/js/upload.js' %}"></script>
     <script src="{% static 'app/js/background.js' %}"></script>
+    <script src="{% static 'app/js/effects.js' %}"></script>
     {% if last_played_index is not None %}
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -270,10 +313,17 @@
             const pitchSlider = document.getElementById('pitch_slider');
             const speedPitchValue = document.getElementById('speed_pitch_display');
 
+            const lowpassSlider = document.getElementById('lowpass-slider');
+            const reverbSlider  = document.getElementById('reverb-slider');
+
             audio.src = `/audio/${currentIndex}/?t=${timestamp}`;
             audio.load();
-
             document.getElementById('download-btn').href = audio.src;
+
+            function getCookie(name) {
+                const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+                return m ? decodeURIComponent(m.pop()) : null;
+            }
             
             prevTrackBtn.addEventListener('click', () => {
                 switchAndPlay(currentIndex - 1);
@@ -282,33 +332,41 @@
             nextTrackBtn.addEventListener('click', () => {
                 switchAndPlay(currentIndex + 1);
             });
+
+            async function saveControlsToSession() {
+                const speed = parseFloat(speedSlider.noUiSlider.get());
+                const pitch = parseFloat(pitchSlider.noUiSlider.get());
+                const speed_pitch = speedPitchValue.innerText;
+
+                const lowpass = parseInt(lowpassSlider.noUiSlider.get());
+                const reverb  = parseFloat(reverbSlider.noUiSlider.get());
+
+                await fetch("/save_values_to_session/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                credentials: "same-origin",
+                body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb })
+                });
+            }
             
             async function reapplyCurrent() {
                 if (!reapplyForm) return;
 
-                const speed = speedSlider.noUiSlider.get();
-                const pitch = Math.round(parseFloat(pitchSlider.noUiSlider.get()));
-                const semitoneText = speedPitchValue.innerText;
-                
-                const speedReapply = document.getElementById("speed_reapply_hidden");
-                const pitchReapply = document.getElementById("pitch_reapply_hidden");
-                const spReapply = document.getElementById("sp_hidden_reapply");
-                
-                if (speedReapply) speedReapply.value = speed;
-                if (pitchReapply) pitchReapply.value = pitch;
-                if (spReapply) spReapply.value = semitoneText;
+                showLoading();
+                await saveControlsToSession();
 
                 const fd = new FormData();
                 fd.append('index', String(currentIndex));
-                fd.append('speed_change_hidden', speedReapply.value);
-                fd.append('pitch_change_hidden', pitchReapply.value);
-                fd.append('speed_pitch_hidden',  spReapply.value);
                 
                 const resp = await fetch(reapplyForm.action, {
                     method: 'POST',
                     body: fd,
                     credentials: 'same-origin'
                 });
+                hideLoading();
                 
                 if (!resp.ok) {
                     console.error('Reapply failed:', resp.status, await resp.text().catch(()=>'')); 
