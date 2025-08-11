@@ -31,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
         userInitiatedSeek = false;
     });
 
-
     sliderContainer.addEventListener('click', (e) => {
         if (!audio.duration) return;
 

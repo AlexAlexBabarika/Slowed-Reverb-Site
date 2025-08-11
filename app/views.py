@@ -1,3 +1,4 @@
+import shutil
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, FileResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -82,7 +83,7 @@ def index(request):
     audio_available = any(os.path.exists(song["output_path"]) for song in playlist)
     last_played_index = request.session.get('last_played_index', None)
     lowpass_hz = int(request.session.get('lowpass', 20000))
-    reverb = float(request.session.get('reverb', 0.0))
+    reverb_amt = float(request.session.get('reverb', 0.0))
 
     return render(request, "app/index.html", {
         "audio_available": audio_available,
@@ -93,7 +94,7 @@ def index(request):
         "timestamp": int(time.time()),
         "last_played_index": last_played_index, 
         "lowpass": lowpass_hz,
-        "reverb": reverb
+        "reverb": reverb_amt
     })
 
 @csrf_exempt
@@ -112,16 +113,18 @@ def reload_audio(request):
     if not input_path or not os.path.exists(input_path):
         return HttpResponse("Original file missing", status=404)
 
-    speed = float(request.session.get('speed', 1.0))
-    pitch = float(request.session.get('pitch', 0.0))
-    lowpass_hz = int(request.session.get('lowpass', 20000))
-    reverb = float(request.session.get('reverb', 0.0))
+    # speed = float(request.session.get('speed', 1.0))
+    # pitch = float(request.session.get('pitch', 0.0))
+    # lowpass_hz = int(request.session.get('lowpass', 20000))
+    # reverb = float(request.session.get('reverb', 0.0))
 
-    output_path = input_path.replace('_original.wav', '_reloaded.wav')
-    try:
-        process_audio(input_path, output_path, speed, pitch, lowpass_hz, reverb)
-    except Exception as e:
-        return HttpResponse(f"Reload error: {e}", status=500)
+    output_path = input_path.replace('_original.wav', '_out.wav')
+    shutil.copyfile(input_path, output_path)
+                    
+    # try:
+    #     process_audio(input_path, output_path, speed, pitch, lowpass_hz, reverb)
+    # except Exception as e:
+    #     return HttpResponse(f"Reload error: {e}", status=500)
 
     song["output_path"] = output_path
     song["duration"] = get_audio_duration(output_path)

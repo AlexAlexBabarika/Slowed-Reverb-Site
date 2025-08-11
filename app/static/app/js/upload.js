@@ -10,7 +10,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     if (!speedSlider || !pitchSlider) return;
 
-    // Read initial values from data attributes rendered by Django
     const initialSpeed = parseFloat(speedSlider.dataset.init || "1.0");
     const initialPitch = parseFloat(pitchSlider.dataset.init || "0");
 
@@ -30,7 +29,6 @@ window.addEventListener('DOMContentLoaded', () => {
         behaviour: 'tap-drag',
     });
 
-    // Helper(s)
     function getCookie(name) {
         const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
         return m ? decodeURIComponent(m.pop()) : null;
@@ -40,16 +38,14 @@ window.addEventListener('DOMContentLoaded', () => {
         const speed = parseFloat(speedSlider.noUiSlider.get());
         const pitch = parseFloat(pitchSlider.noUiSlider.get());
 
-        // display semitones
         let semitones = (12 * Math.log2(speed)).toFixed(2);
         if (parseFloat(semitones) > 0) semitones = "+" + semitones;
         const speed_pitch = `${semitones} semitones`;
 
-        // If effects sliders exist, include them too
         const lowpassEl = document.getElementById('lowpass-slider');
         const reverbEl  = document.getElementById('reverb-slider');
-        const lowpass = lowpassEl?.noUiSlider ? parseInt(lowpassEl.noUiSlider.get()) : 20000;
-        const reverb  = reverbEl?.noUiSlider  ? parseFloat(reverbEl.noUiSlider.get()) : 0.0;
+        const lowpass = parseInt(lowpassEl.noUiSlider.get());
+        const reverb  = parseFloat(reverbEl.noUiSlider.get());
 
         await fetch("/save_values_to_session/", {
             method: "POST",
@@ -62,12 +58,6 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const debounce = (fn, ms=150) => {
-        let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-    };
-    const debouncedSave = debounce(saveControlsToSession, 150);
-
-    // 🎚 Speed slider updates (UI + persist)
     speedSlider.noUiSlider.on('update', (values, handle) => {
         const val = parseFloat(values[handle]);
         speedValue.textContent = (val * 100).toFixed(0) + "%";
@@ -75,18 +65,13 @@ window.addEventListener('DOMContentLoaded', () => {
         let semitones = (12 * Math.log2(val)).toFixed(2);
         if (parseFloat(semitones) > 0) semitones = "+" + semitones;
         speedPitchValue.textContent = `${semitones} semitones`;
-
-        debouncedSave();
     });
 
-    // 🎚 Pitch slider updates (UI + persist)
     pitchSlider.noUiSlider.on('update', (values, handle) => {
         const val = Math.round(values[handle]);
         pitchValue.textContent = (val > 0 ? "+" + val : val);
-        debouncedSave();
     });
 
-    // Initial labels
     speedValue.textContent = (initialSpeed * 100).toFixed(0) + "%";
     pitchValue.textContent = (initialPitch > 0 ? "+" + initialPitch : initialPitch);
     {
@@ -95,17 +80,57 @@ window.addEventListener('DOMContentLoaded', () => {
         speedPitchValue.textContent = `${semitones} semitones`;
     }
 
-    // Ensure session is up-to-date before a row "▶" reload submits
     document.querySelectorAll('.reload-form').forEach(form => {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            try { showLoading(); } catch (_) {}
-            await saveControlsToSession();
-            form.submit(); // index is the only field; server reads session
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        try { showLoading(); } catch (_) {}
+        await saveControlsToSession();
+
+        const fd = new FormData(form);
+        const index = Number(fd.get('index'));
+
+        const resp = await fetch(form.action, {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin'
         });
+
+        try { hideLoading(); } catch (_) {}
+        if (!resp.ok) {
+        console.error('Reload failed:', resp.status, await resp.text().catch(()=>'')); 
+        return;
+        }
+
+        const audio = document.getElementById('audio');
+        if (!audio) return;
+
+        const ts = Date.now();
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+        audio.src = `/audio/${index}/?t=${ts}`;
+        audio.load();
+
+        const tryPlay = () => {
+        audio.play()
+            .then(() => {
+            fetch(`/set_last_played/${index}/`, { method: 'POST' }).catch(()=>{});
+            })
+            .catch(err => console.warn('autoplay blocked:', err));
+        };
+
+        if (audio.readyState >= 3) {
+        tryPlay();
+        } else {
+        audio.addEventListener('canplay', tryPlay, { once: true });
+        }
+
+        const dl = document.getElementById('download-btn');
+        if (dl) dl.href = audio.src;
+    });
     });
 
-    // Upload new files: persist first, then submit
     window.submitFormWithSpeed = async function () {
         try { showLoading(); } catch (_) {}
         await saveControlsToSession();

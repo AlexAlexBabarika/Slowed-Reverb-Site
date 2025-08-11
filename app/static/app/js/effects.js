@@ -7,8 +7,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!lowpassSlider || !reverbSlider) return;
 
+    const lpStart = parseInt(lowpassSlider.dataset.init || "20000", 10);
+    const rvStart = parseFloat(reverbSlider.dataset.init || "0.0");
+
     noUiSlider.create(lowpassSlider, {
-        start: 20000,
+        start: lpStart,
         connect: 'lower',
         range: { min: 200, max: 20000 },
         step: 200,
@@ -16,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     noUiSlider.create(reverbSlider, {
-        start: 0.0,
+        start: rvStart,
         connect: 'lower',
         range: { min: 0.0, max: 1.0 },
         step: 0.01,
@@ -62,6 +65,9 @@ document.addEventListener("DOMContentLoaded", () => {
     //     let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
     // };
     // const debouncedSave = debounce(saveEffectsToSession, 150);
+
+    lowpassDisplay.textContent = lpStart.toFixed(0);
+    reverbDisplay.textContent  = rvStart.toFixed(2);
 
     lowpassSlider.noUiSlider.on('update', (values, handle) => {
         const val = parseInt(values[handle]);
