@@ -77,9 +77,9 @@
 
     <div class="main-container">
         <div class="container">
-            <!-- 🎚 Speed + Pitch Control -->
+            <!-- Effects -->
             <div class="box" style="font-size: 32;">
-                <div>Change speed 🏎️</div>
+                <div>Apply effects 🤖</div>
 
                 <div style="display: flex; flex-direction: column; gap: 1vw; height: 100%;">
                     <div style="display: flex; flex-direction: row;">
@@ -96,22 +96,7 @@
                         Pitch (semitones): &nbsp;<span id="pitch_display">{{ pitch_value|default:"0" }}</span>
                     </div>
                     <div id="pitch_slider" style="width: 100%" data-init="{{ pitch_value|default:'0' }}"></div>
-                    
-                    {% if last_played_index is not None %}
-                        <form method="post" style="margin-bottom: 0; margin-top: auto;" action="{% url 'reload_audio' %}" class="reapply-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="index" value="{{ last_played_index }}">
-                            <button type="submit" style="width: 100%" data-index="{{ last_played_index }}">Apply speed & effects</button>
-                        </form>
-                    {% endif %}
-                </div>
-            </div>
 
-            <!-- 🛠 WIP Effects -->
-            <div class="box" style="font-size: 32;">
-                <div>Apply effects 🤖</div>
-
-                <div style="display: flex; flex-direction: column; gap: 1vw; height: 100%;">
                     <div style="font-size: 24px; font-weight: 500;">
                         Low-pass: &nbsp;<span id="lowpass-display">{{lowpass}}</span>
                     </div>
@@ -126,14 +111,23 @@
                         Gain: &nbsp;<span id="gain-display">{{gain}}</span>
                     </div>
                     <div id="gain-slider" style="width: 100%" data-init="{{gain|default:'0.00'}}"></div>
+                    
+                    {% if last_played_index is not None %}
+                        <form method="post" style="margin-bottom: 0; margin-top: auto;" action="{% url 'reload_audio' %}" class="reapply-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="index" value="{{ last_played_index }}">
+                            <button type="submit" style="width: 100%" data-index="{{ last_played_index }}">Apply speed & effects</button>
+                        </form>
+                    {% endif %}
                 </div>
             </div>
 
-            <!-- 📁 Playlist & Upload -->
-            <div class="box" style="font-size: 32px;">
-                <div>Choose songs 💾</div>
+            <!-- Playlist -->
+            <div class="box" style="font-size: 32;">
+                <div>Playlist 📼</div>
 
-                <div class="playlist-scroll" style="max-height: 50vh; overflow-y: auto;">
+                {% if last_played_index is not None %}
+                <div class="playlist-scroll" style="overflow-y: auto; border-top: 1px solid var(--text);">
                     <ol style="list-style: none;
                             padding-left: 0;
                             margin: 0;
@@ -165,7 +159,7 @@
                                             min-width: 0;
                                             overflow: hidden;
                                             ">
-                                    <span style="font-size: 12px; color: gray;">{{ song.artist}}</span>
+                                    <span style="font-size: 12px; color: gray;">{{ song.artist }}</span>
                                     <span style="
                                         font-size: 18px;
                                         white-space: nowrap;
@@ -198,6 +192,12 @@
                         {% endfor %}
                     </ol>
                 </div>
+                {% endif %}
+            </div>
+
+            <!-- Upload -->
+            <div class="box" style="font-size: 32px;">
+                <div>Upload songs 💾</div>
 
                 <form id="youtubeForm" action="{% url 'download_from_youtube' %}" method="POST" enctype="multipart/form-data" style="margin-top: auto; margin-bottom: -0.5vw"">
                     {% csrf_token %}
@@ -350,6 +350,7 @@
 
                 ws.once('ready', async () => {
                     try { await ws.play(); persistIndex(currentIndex); } catch(_){}
+                    ws.setTime(0);
                     timeDur.textContent = formatTime(ws.getDuration());
                     try { hideLoading(); } catch(_){}
                 });

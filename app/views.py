@@ -348,7 +348,7 @@ def process_audio(in_path: str, out_path: str,
         samples, _ = change_speed(sr, samples, speed_change)
 
     try:
-        if gain_db and gain_db > 0.0: gain(board, samples, gain_db)
+        if gain_db and gain_db != 0 : gain(board, samples, gain_db)
             
         if lowpass_hz and lowpass_hz < 20000: lowpass(board, samples, lowpass_hz)
 
@@ -365,7 +365,7 @@ def process_audio(in_path: str, out_path: str,
         with AudioFile(out_path, 'w', samplerate=sr, num_channels=num_channels) as g:
             g.write(samples.astype(np.float32, copy=False))
 
-        print(f"Processed:\n -Speed: {speed_change}\n\
+        print(f"Processed:\n -Gain: {gain_db}\n-Speed: {speed_change}\n\
             -Pitch: {pitch_change}\n\
             -Lowpass: {lowpass_hz}\n -Reverb: {reverb_amount}")
 
