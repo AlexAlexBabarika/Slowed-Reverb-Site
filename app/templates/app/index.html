@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{% static 'app/css/nouislider.min.css' %}">
     <link rel="stylesheet" href="{% static 'app/css/style.css' %}">        
     <script src="{% static 'app/js/nouislider.min.js' %}"></script>
+    <script src="{% static 'app/js/wavesurfer.min.js' %}"></script>
 
     <style>
         body {
@@ -213,15 +214,16 @@
                                 if (!url.startsWith("http")) return;
 
                                 function getCookie(name) {
-                                    const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-                                    return m ? decodeURIComponent(m.pop()) : null;
+                                const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+                                return m ? decodeURIComponent(m.pop()) : null;
                                 }
 
+                                // Persist current sliders to session
                                 const speedEl = document.getElementById('speed_slider');
                                 const pitchEl = document.getElementById('pitch_slider');
-                                const lowEl = document.getElementById('lowpass-slider');
-                                const revEl = document.getElementById('reverb-slider');
-                                const gainEl = document.getElementById('gain-slider');
+                                const lowEl   = document.getElementById('lowpass-slider');
+                                const revEl   = document.getElementById('reverb-slider');
+                                const gainEl  = document.getElementById('gain-slider');
 
                                 const speed = speedEl?.noUiSlider ? parseFloat(speedEl.noUiSlider.get()) : 1.0;
                                 const pitch = pitchEl?.noUiSlider ? parseFloat(pitchEl.noUiSlider.get()) : 0.0;
@@ -229,27 +231,27 @@
                                 if (parseFloat(semitones) > 0) semitones = "+" + semitones;
                                 const speed_pitch = `${semitones} semitones`;
                                 const lowpass = lowEl?.noUiSlider ? parseInt(lowEl.noUiSlider.get()) : 20000;
-                                const reverb = revEl?.noUiSlider ? parseFloat(revEl.noUiSlider.get()) : 0.0;
-                                const gain = revEl?.noUiSlider ? parseFloat(gainEl.noUiSlider.get()) : 0.0;
+                                const reverb  = revEl?.noUiSlider ? parseFloat(revEl.noUiSlider.get()) : 0.0;
+                                const gain    = gainEl?.noUiSlider ? parseFloat(gainEl.noUiSlider.get()) : 0.0;  // FIXED ternary
 
                                 try {
-                                    const overlay = document.getElementById('loading-overlay');
-                                    if (overlay) overlay.style.display = 'flex';
+                                const overlay = document.getElementById('loading-overlay');
+                                if (overlay) overlay.style.display = 'flex';
 
-                                    await fetch("/save_values_to_session/", {
-                                        method: "POST",
-                                        headers: {
-                                            "Content-Type": "application/json",
-                                            "X-CSRFToken": getCookie("csrftoken")
-                                        },
-                                        credentials: "same-origin",
-                                        body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb, gain })
-                                    });
+                                await fetch("/save_values_to_session/", {
+                                    method: "POST",
+                                    headers: {
+                                    "Content-Type": "application/json",
+                                    "X-CSRFToken": getCookie("csrftoken")
+                                    },
+                                    credentials: "same-origin",
+                                    body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb, gain })
+                                });
 
-                                    document.getElementById("youtubeForm").submit();
+                                document.getElementById("youtubeForm").submit();
                                 } catch (e) {
-                                    console.warn("Failed to persist session before YouTube submit:", e);
-                                    document.getElementById("youtubeForm").submit();
+                                console.warn("Failed to persist session before YouTube submit:", e);
+                                document.getElementById("youtubeForm").submit();
                                 }
                             }
                         </script>
@@ -269,17 +271,17 @@
         <div class="lower-container">
             <div class="lower-box">
                 {% if last_played_index is not None and playlist %}
-                <div class="custom-player">
-                    <audio id="audio" src=""></audio>
-
-                    <div class="controls">
-                        <button id="prev-btn">⏮</button>
-                        <button id="playPause" style="min-width: 2.5vw;">⏯</button>
-                        <button id="next-btn">⏭</button>
-                        <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
-                        <div id="seek-slider" style="flex-grow: 1; width: 100%"></div>
-                        <div id="volume-slider" style="flex-grow: 1; width: 100%"></div>
-                        <a id="download-btn" href="#" download><span>⬇</span></a>
+                    <div class="custom-player">
+                        <div class="controls">
+                            <button id="prev-btn">⏮</button>
+                            <button id="playPause" style="min-width: 2.5vw;">⏯</button>
+                            <button id="next-btn">⏭</button>
+                            <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
+                            <div id="waveform"
+                                data-index="{{ last_played_index|default:0 }}"
+                                data-total="{{ playlist|length }}" style="width: 100%"></div>
+                            <a id="download-btn" href="#" download><span>⬇</span></a>
+                        </div>
                     </div>
                 </div>
                 {% endif %}
@@ -287,140 +289,149 @@
         </div>
     </div>
 
-    <script src="{% static 'app/js/main.js' %}"></script>
-    <script src="{% static 'app/js/player.js' %}"></script>
     <script src="{% static 'app/js/upload.js' %}"></script>
     <script src="{% static 'app/js/background.js' %}"></script>
     <script src="{% static 'app/js/effects.js' %}"></script>
     {% if last_played_index is not None %}
     <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            let currentIndex = {{ last_played_index|default:0 }};
-            const total = {{ playlist|length }};
+        // Minimal inline WaveSurfer setup (you can move this to a separate file)
+        document.addEventListener('DOMContentLoaded', () => {
+            const wf = document.getElementById('waveform');
+            if (!wf) return;
+
+            const total = parseInt(wf.dataset.total || '0', 10);
             if (!total) return;
 
-            const audio = document.getElementById('audio');
-            const timestamp = new Date().getTime();
+            let currentIndex = parseInt(wf.dataset.index || '0', 10);
+
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const playBtn = document.getElementById('playPause');
+            const timeCur = document.getElementById('currentTime');
+            const timeDur = document.getElementById('duration');
+            const downloadBtn = document.getElementById('download-btn');
             const reapplyForm = document.querySelector('.reapply-form');
 
-            const prevTrackBtn = document.getElementById('prev-btn');
-            const nextTrackBtn = document.getElementById('next-btn');
-            const playPauseBtn = document.getElementById('playPause')
+            const ws = WaveSurfer.create({
+                container: '#waveform',
+                height: 45,
+                waveColor: '#BBBBBB',
+                progressColor: '#FAFAFA',
+                cursorColor: '#FFFFFF',
+                backend: 'WebAudio',
+                barWidth: 2,
+                barGap: 1,
+                barRadius: 2,
+                partialRender: true,
+            });
 
-            const speedSlider = document.getElementById('speed_slider');
-            const pitchSlider = document.getElementById('pitch_slider');
-            const speedPitchValue = document.getElementById('speed_pitch_display');
+            function formatTime(sec) {
+                const s=Math.max(0, Math.floor(sec)||0);
+                const m=(s/60|0), r=s%60;
+                return m + ':' + r.toString().padStart(2,'0'); 
+            }
 
-            const lowpassSlider = document.getElementById('lowpass-slider');
-            const reverbSlider  = document.getElementById('reverb-slider');
-            const gainSlider  = document.getElementById('gain-slider');
+            function persistIndex(i) {
+                fetch(`/set_last_played/${i}/`, { method:'POST' }).catch(()=>{}); 
+            }
 
-            audio.src = `/audio/${currentIndex}/?t=${timestamp}`;
-            audio.load();
-            document.getElementById('download-btn').href = audio.src;
+            function srcFor(i) {
+                return `/audio/${i}/?t=${Date.now()}`; 
+            }
+
+            async function loadAndPlay(i){
+                currentIndex = ((i % total) + total) % total;
+                
+                const src = srcFor(currentIndex);
+                try { showLoading(); } catch(_){}
+
+                downloadBtn.href = src;
+                await ws.load(src);
+
+                ws.once('ready', async () => {
+                    try { await ws.play(); persistIndex(currentIndex); } catch(_){}
+                    timeDur.textContent = formatTime(ws.getDuration());
+                    try { hideLoading(); } catch(_){}
+                });
+            }
+
+            ws.on('audioprocess', () => {
+                timeCur.textContent = formatTime(ws.getCurrentTime());
+            });
+
+            ws.on('ready', () => {
+                timeDur.textContent = formatTime(ws.getDuration());
+            });
+
+            ws.on('play', () => { if (playBtn) playBtn.textContent = '⏸'; });
+            ws.on('pause', () => { if (playBtn) playBtn.textContent = '▶'; });
+            ws.on('finish', () => { if (playBtn) playBtn.textContent = '▶'; });
+
+            prevBtn.addEventListener('click', () => loadAndPlay(currentIndex - 1));
+            nextBtn.addEventListener('click', () => loadAndPlay(currentIndex + 1));
+            playBtn.addEventListener('click', () => ws.playPause());
+
+            window.loadAndPlay = loadAndPlay;
+            loadAndPlay(currentIndex); // First track
 
             function getCookie(name) {
                 const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
                 return m ? decodeURIComponent(m.pop()) : null;
             }
-            
-            prevTrackBtn.addEventListener('click', () => {
-                switchAndPlay(currentIndex - 1);
-            });
-            
-            nextTrackBtn.addEventListener('click', () => {
-                switchAndPlay(currentIndex + 1);
-            });
 
             async function saveControlsToSession() {
-                const speed = parseFloat(speedSlider.noUiSlider.get());
-                const pitch = parseFloat(pitchSlider.noUiSlider.get());
-                const speed_pitch = speedPitchValue.innerText;
-
-                const lowpass = parseInt(lowpassSlider.noUiSlider.get());
-                const reverb = parseFloat(reverbSlider.noUiSlider.get());
-                const gain = parseFloat(gainSlider.noUiSlider.get());
+                const speed = parseFloat(document.getElementById('speed_slider')?.noUiSlider?.get() ?? 1.0);
+                const pitch = parseFloat(document.getElementById('pitch_slider')?.noUiSlider?.get() ?? 0.0);
+                const speed_pitch = document.getElementById('speed_pitch_display')?.innerText ?? '';
+                const lowpass = parseInt(document.getElementById('lowpass-slider')?.noUiSlider?.get() ?? 20000);
+                const reverb  = parseFloat(document.getElementById('reverb-slider')?.noUiSlider?.get() ?? 0.0);
+                const gain    = parseFloat(document.getElementById('gain-slider')?.noUiSlider?.get() ?? 0.0);
 
                 await fetch("/save_values_to_session/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCookie("csrftoken")
-                },
-                credentials: "same-origin",
-                body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb , gain})
+                    method: "POST",
+                    headers: { "Content-Type":"application/json", "X-CSRFToken": getCookie("csrftoken") },
+                    credentials: "same-origin",
+                    body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb, gain })
                 });
             }
-            
-            async function reapplyCurrent() {
-                if (!reapplyForm) return;
 
+            reapplyForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
                 showLoading();
                 await saveControlsToSession();
 
-                const fd = new FormData();
+                const fd = new FormData(reapplyForm);
                 fd.append('index', String(currentIndex));
                 
                 const resp = await fetch(reapplyForm.action, {
-                    method: 'POST',
-                    body: fd,
-                    credentials: 'same-origin'
+                    method:'POST',
+                    body:fd,
+                    credentials:'same-origin' 
                 });
                 hideLoading();
-                
+
                 if (!resp.ok) {
                     console.error('Reapply failed:', resp.status, await resp.text().catch(()=>'')); 
                     return;
                 }
 
-                play(currentIndex);
-            }
+                loadAndPlay(currentIndex);
+            });
 
-            if (reapplyForm) {
-                reapplyForm.addEventListener('submit', (e) => {
+            document.querySelectorAll('.reload-form').forEach(form => {
+                form.addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    reapplyCurrent();
+
+                    showLoading();
+                    const fd = new FormData(form);
+                    const index = Number(fd.get('index'));
+                    const resp = await fetch(form.action, { method:'POST', body:fd, credentials:'same-origin' });
+                    hideLoading();
+
+                    if (!resp.ok) return console.error('Reload failed:', resp.status);
+                    loadAndPlay(index);
                 });
-            }
-
-            function persistIndex(index) {
-                fetch(`/set_last_played/${index}/`, {
-                method: 'POST'
-                }).catch(() => {});
-            }
-    
-            function switchAndPlay(index) {
-                currentIndex = ((index % total) + total) % total;
-                play(currentIndex);
-            }
-
-            function play(index) {
-                audio.pause();
-                audio.removeAttribute('src');
-                audio.load();
-    
-                const ts = Date.now();
-                audio.src = `/audio/${index}/?t=${ts}`;
-                document.getElementById('download-btn').href = audio.src;
-                audio.load();
-    
-                const tryPlay = () => {
-                    audio.play()
-                        .then(() => {
-                            persistIndex(index);
-                        })
-                        .catch(err => {
-                            console.warn('play() failed:', err);
-                        });
-                };
-    
-                if (audio.readyState >= 3) {
-                    tryPlay()
-                    return;
-                }
-    
-                audio.addEventListener('canplay', tryPlay, { once: true });
-            }
+            });
         });
     </script>
     {% endif %}

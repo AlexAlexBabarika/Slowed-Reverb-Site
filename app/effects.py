@@ -34,10 +34,7 @@ def change_speed(sr: int, samples: np.ndarray, speed_change: float):
 
 def change_pitch(board: Pedalboard, samples: np.ndarray, pitch_change_semitones: int):
     samples = ensure_float32(samples)
-    if pitch_change_semitones == 0:
-        return samples
-
-    board.append(PitchShift(semitones=float(pitch_change_semitones)))
+    if pitch_change_semitones != 0: board.append(PitchShift(semitones=float(pitch_change_semitones)))
 
 def lowpass(board: Pedalboard, samples: np.ndarray, cutoff_hz: float):
     samples = ensure_float32(samples)

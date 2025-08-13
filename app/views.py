@@ -348,11 +348,9 @@ def process_audio(in_path: str, out_path: str,
         samples, _ = change_speed(sr, samples, speed_change)
 
     try:
-        if gain_db and gain_db > 0.0:
-            gain(board, samples, gain_db)
+        if gain_db and gain_db > 0.0: gain(board, samples, gain_db)
             
-        if lowpass_hz and lowpass_hz < 20000:
-            lowpass(board, samples, lowpass_hz)
+        if lowpass_hz and lowpass_hz < 20000: lowpass(board, samples, lowpass_hz)
 
         if reverb_amount and reverb_amount > 0.0:
             reverb(board, sr, samples, reverb_amount)
