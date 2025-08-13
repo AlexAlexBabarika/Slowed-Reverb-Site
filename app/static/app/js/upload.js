@@ -43,9 +43,12 @@ window.addEventListener('DOMContentLoaded', () => {
         const speed_pitch = `${semitones} semitones`;
 
         const lowpassEl = document.getElementById('lowpass-slider');
-        const reverbEl  = document.getElementById('reverb-slider');
+        const reverbEl = document.getElementById('reverb-slider');
+        const gainEl = document.getElementById('gain-slider');
+
         const lowpass = parseInt(lowpassEl.noUiSlider.get());
-        const reverb  = parseFloat(reverbEl.noUiSlider.get());
+        const reverb = parseFloat(reverbEl.noUiSlider.get());
+        const gain = parseFloat(gainEl.noUiSlider.get());
 
         await fetch("/save_values_to_session/", {
             method: "POST",
@@ -54,7 +57,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 "X-CSRFToken": getCookie("csrftoken"),
             },
             credentials: "same-origin",
-            body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb })
+            body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb, gain })
         });
     }
 

@@ -120,6 +120,11 @@
                         Reverb: &nbsp;<span id="reverb-display">{{reverb}}</span>
                     </div>
                     <div id="reverb-slider" style="width: 100%" data-init="{{reverb|default:'0.00'}}"></div>
+
+                    <div style="font-size: 24px; font-weight: 500;">
+                        Gain: &nbsp;<span id="gain-display">{{gain}}</span>
+                    </div>
+                    <div id="gain-slider" style="width: 100%" data-init="{{gain|default:'0.00'}}"></div>
                 </div>
             </div>
 
@@ -212,11 +217,11 @@
                                     return m ? decodeURIComponent(m.pop()) : null;
                                 }
 
-                                // Persist current sliders to session
                                 const speedEl = document.getElementById('speed_slider');
                                 const pitchEl = document.getElementById('pitch_slider');
-                                const lowEl   = document.getElementById('lowpass-slider');
-                                const revEl   = document.getElementById('reverb-slider');
+                                const lowEl = document.getElementById('lowpass-slider');
+                                const revEl = document.getElementById('reverb-slider');
+                                const gainEl = document.getElementById('gain-slider');
 
                                 const speed = speedEl?.noUiSlider ? parseFloat(speedEl.noUiSlider.get()) : 1.0;
                                 const pitch = pitchEl?.noUiSlider ? parseFloat(pitchEl.noUiSlider.get()) : 0.0;
@@ -224,7 +229,8 @@
                                 if (parseFloat(semitones) > 0) semitones = "+" + semitones;
                                 const speed_pitch = `${semitones} semitones`;
                                 const lowpass = lowEl?.noUiSlider ? parseInt(lowEl.noUiSlider.get()) : 20000;
-                                const reverb  = revEl?.noUiSlider  ? parseFloat(revEl.noUiSlider.get()) : 0.0;
+                                const reverb = revEl?.noUiSlider ? parseFloat(revEl.noUiSlider.get()) : 0.0;
+                                const gain = revEl?.noUiSlider ? parseFloat(gainEl.noUiSlider.get()) : 0.0;
 
                                 try {
                                     const overlay = document.getElementById('loading-overlay');
@@ -237,7 +243,7 @@
                                             "X-CSRFToken": getCookie("csrftoken")
                                         },
                                         credentials: "same-origin",
-                                        body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb })
+                                        body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb, gain })
                                     });
 
                                     document.getElementById("youtubeForm").submit();
@@ -307,6 +313,7 @@
 
             const lowpassSlider = document.getElementById('lowpass-slider');
             const reverbSlider  = document.getElementById('reverb-slider');
+            const gainSlider  = document.getElementById('gain-slider');
 
             audio.src = `/audio/${currentIndex}/?t=${timestamp}`;
             audio.load();
@@ -331,7 +338,8 @@
                 const speed_pitch = speedPitchValue.innerText;
 
                 const lowpass = parseInt(lowpassSlider.noUiSlider.get());
-                const reverb  = parseFloat(reverbSlider.noUiSlider.get());
+                const reverb = parseFloat(reverbSlider.noUiSlider.get());
+                const gain = parseFloat(gainSlider.noUiSlider.get());
 
                 await fetch("/save_values_to_session/", {
                 method: "POST",
@@ -340,7 +348,7 @@
                     "X-CSRFToken": getCookie("csrftoken")
                 },
                 credentials: "same-origin",
-                body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb })
+                body: JSON.stringify({ speed, pitch, speed_pitch, lowpass, reverb , gain})
                 });
             }
             

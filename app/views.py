@@ -84,6 +84,7 @@ def index(request):
     last_played_index = request.session.get('last_played_index', None)
     lowpass_hz = int(request.session.get('lowpass', 20000))
     reverb_amt = float(request.session.get('reverb', 0.0))
+    gain_db = float(request.session.get('gain', 0.0))
 
     return render(request, "app/index.html", {
         "audio_available": audio_available,
@@ -94,7 +95,8 @@ def index(request):
         "timestamp": int(time.time()),
         "last_played_index": last_played_index, 
         "lowpass": lowpass_hz,
-        "reverb": reverb_amt
+        "reverb": reverb_amt,
+        "gain": gain_db
     })
 
 @csrf_exempt
@@ -170,10 +172,11 @@ def serve_audio(request, index):
     pitch = float(request.session.get('pitch', 0.0))
     lowpass_hz = int(request.session.get('lowpass', 20000))
     reverb = float(request.session.get('reverb', 0.0))
+    gain = float(request.session.get('gain', 0.0))
 
     tmp_out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
     try:
-        process_audio(orig, tmp_out, speed, pitch, lowpass_hz, reverb)
+        process_audio(orig, tmp_out, speed, pitch, lowpass_hz, reverb, gain)
     except Exception as e:
         return HttpResponse(f"Processing error: {e}", status=500)
 
@@ -196,6 +199,7 @@ def save_values_to_session(request):
 
     request.session['lowpass'] = int(data.get('lowpass', 20000))
     request.session['reverb'] = float(data.get('reverb', 0.0))
+    request.session['gain'] = float(data.get('gain', 0.0))
     request.session.modified = True
 
     return JsonResponse({"ok": True})
@@ -251,9 +255,10 @@ def download_from_youtube(request):
     pitch = float(request.session.get('pitch', 0.0))
     lowpass_hz = int(request.session.get('lowpass', 20000))
     reverb = float(request.session.get('reverb', 0.0))
+    gain = float(request.session.get('gain', 0.0))
 
     try:
-        process_audio(original_path, output_path, speed, pitch, lowpass_hz, reverb)
+        process_audio(original_path, output_path, speed, pitch, lowpass_hz, reverb, gain)
     except Exception as e:
         return HttpResponse(f"Processing failed: {e}", status=500)
 
@@ -297,7 +302,7 @@ def cleanup_view(request):
 
 def process_audio(in_path: str, out_path: str,
                 speed_change: float, pitch_change: int,
-                lowpass_hz: int, reverb_amount: float):
+                lowpass_hz: int, reverb_amount: float, gain_db: float):
     try:
         with AudioFile(in_path) as f:
             sr = f.samplerate or 44100
@@ -333,19 +338,27 @@ def process_audio(in_path: str, out_path: str,
     except:
         print("Normalization failed")
 
+    board = Pedalboard()
     if pitch_change != 0 and abs(speed_change - 1.0) > 1e-3:
         samples, _ = change_speed(sr, samples, speed_change)
-        samples = change_pitch(sr, samples, pitch_change)
+        change_pitch(board, samples, pitch_change)
     elif pitch_change != 0:
-        samples = change_pitch(sr, samples, pitch_change)
+        change_pitch(board, samples, pitch_change)
     else: 
         samples, _ = change_speed(sr, samples, speed_change)
 
     try:
+        if gain_db and gain_db > 0.0:
+            gain(board, samples, gain_db)
+            
         if lowpass_hz and lowpass_hz < 20000:
-            samples = lowpass(sr, samples, lowpass_hz)
+            lowpass(board, samples, lowpass_hz)
+
         if reverb_amount and reverb_amount > 0.0:
-            samples = reverb(sr, samples, reverb_amount)
+            reverb(board, sr, samples, reverb_amount)
+
+        samples = board(samples, sample_rate=sr)
+
     except Exception as e:
         print("Effect stage failed:", e)
 
