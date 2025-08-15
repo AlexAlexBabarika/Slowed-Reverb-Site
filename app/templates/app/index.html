@@ -225,9 +225,9 @@
         </div>
 
         <!-- 🎧 Global Audio Player -->
-        <div class="lower-container">
-            <div class="lower-box">
-                {% if last_played_index is not None and playlist %}
+        {% if last_played_index is not None and playlist %}
+            <div class="lower-container">
+                <div class="lower-box">
                     <div class="custom-player">
                         <div class="controls">
                             <button id="prev-btn">⏮</button>
@@ -236,14 +236,15 @@
                             <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
                             <div id="waveform"
                                 data-index="{{ last_played_index|default:0 }}"
-                                data-total="{{ playlist|length }}" style="width: 100%; max-height: 80px;"></div>
+                                data-total="{{ playlist|length }}" style="width: 100%; max-height: 80px;">
+                            </div>
+                            <button id="cycle-btn">↺</button>
                             <a id="download-btn" href="#" download><span>⬇</span></a>
                         </div>
                     </div>
                 </div>
-                {% endif %}
             </div>
-        </div>
+        {% endif %}
     </div>
 
     <script src="{% static 'app/js/upload.js' %}"></script>
@@ -268,6 +269,10 @@
             const timeDur = document.getElementById('duration');
             const downloadBtn = document.getElementById('download-btn');
             const reapplyForm = document.querySelector('.reapply-form');
+            const cycleBtn = document.getElementById("cycle-btn");
+
+            let isCycle = localStorage.getItem('player_cycle') === '1';
+            updateCycleUI();
 
             const ws = WaveSurfer.create({
                 container: '#waveform',
@@ -286,6 +291,11 @@
                 const s=Math.max(0, Math.floor(sec)||0);
                 const m=(s/60|0), r=s%60;
                 return m + ':' + r.toString().padStart(2,'0'); 
+            }
+
+            function updateCycleUI() {
+                if (!cycleBtn) return;
+                cycleBtn.style.opacity = isCycle ? '1' : '0.4';
             }
 
             function makePlaylistCellActive(idx) {
@@ -329,7 +339,13 @@
 
             ws.on('play', () => { if (playBtn) playBtn.textContent = '⏸'; });
             ws.on('pause', () => { if (playBtn) playBtn.textContent = '▶'; });
-            ws.on('finish', () => { if (playBtn) playBtn.textContent = '▶'; });
+            ws.on('finish', () => {
+                if (playBtn) playBtn.textContent = '▶'; 
+                if (isCycle) {
+                    ws.setTime(0);
+                    ws.play();
+                }
+            });
 
             prevBtn.addEventListener('click', () => {
                 loadAndPlay(currentIndex - 1);
@@ -339,6 +355,12 @@
             nextBtn.addEventListener('click', () => {
                 loadAndPlay(currentIndex + 1);
                 makePlaylistCellActive(currentIndex);
+            });
+
+            cycleBtn.addEventListener('click', () => {
+                isCycle = !isCycle;
+                localStorage.setItem('player_cycle', isCycle ? '1' : '0');
+                updateCycleUI();
             });
 
             playBtn.addEventListener('click', () => ws.playPause());
