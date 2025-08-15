@@ -64,7 +64,7 @@
         </div>
 
         <h1 style="
-            font-size: 3vw;
+            font-size: clamp(28px, 3vw, 56px);
             font-family: 'Elza', sans-serif;
             font-weight: 700;
             text-align: center;
@@ -78,7 +78,7 @@
     <div class="main-container">
         <div class="container">
             <!-- Effects -->
-            <div class="box" style="font-size: 32;">
+            <div class="box" style="font-size: 32px">
                 <div>Apply effects 🤖</div>
 
                 <div style="display: flex; flex-direction: column; gap: 1vw; height: 100%;">
@@ -123,7 +123,7 @@
             </div>
 
             <!-- Playlist -->
-            <div class="box" style="font-size: 32;">
+            <div class="box" style="font-size: 32px;">
                 <div>Playlist 📼</div>
 
                 {% if last_played_index is not None %}
@@ -236,7 +236,7 @@
                             <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
                             <div id="waveform"
                                 data-index="{{ last_played_index|default:0 }}"
-                                data-total="{{ playlist|length }}" style="width: 100%; max-height: 80;ç"></div>
+                                data-total="{{ playlist|length }}" style="width: 100%; max-height: 80px;"></div>
                             <a id="download-btn" href="#" download><span>⬇</span></a>
                         </div>
                     </div>

@@ -1,3 +1,4 @@
+import platform
 import shutil
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, FileResponse, HttpResponseBadRequest, JsonResponse
@@ -231,8 +232,12 @@ def download_from_youtube(request):
         }],
         'quiet': True,
         'encoding': 'utf-8',
-        'cookiesfrombrowser': ('chrome',)
     }
+
+    if platform.system() == 'Windows':
+        ydl_opts['cookiesfrombrowser'] = ('firefox',) 
+    else:
+        ydl_opts['cookiesfrombrowser'] = ('chrome',)
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
