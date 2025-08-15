@@ -76,7 +76,8 @@ input[type="url"]:hover {
     border-radius: 16px;
     text-align: left;
     padding: 2vh;
-    width: 30vw; 
+    min-width: 35vw; 
+    max-width: 35vw;
     height: 100%;
     gap: 1.5vw;
     box-sizing: border-box;
@@ -101,7 +102,7 @@ input[type="url"]:hover {
     padding: 20px;
     border-radius: 16px;
     text-align: center;
-    width: 60vw; 
+    width: 65vw; 
     height: 100%;
     box-sizing: border-box;
     box-shadow: 0 4px 16px var(--shadow);
@@ -110,7 +111,6 @@ input[type="url"]:hover {
 .lower-box:hover {
     transform: scale(1.03);
 }
-
 
 .lower-box.synthwave {
     background: rgba(255, 255, 255, 0.07);
@@ -385,3 +385,48 @@ input[type="range"].slider:hover::-moz-range-thumb {
     50%  { transform: scale(1.06); }
     100% { transform: scale(1); }
 }
+
+.playlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.track {
+    display: flex;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+    height: 5vh;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.06);
+    /* background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)); */
+    transition: background .15s ease, border-color .15s ease, transform .06s ease;
+}
+.track:hover { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.12); }
+.track:active { transform: translateY(1px); }
+.track.is-active { border-color: rgba(255,255,255,.4); box-shadow: 0 6px 18px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06); }
+
+.track-num { width: 28px; text-align: right; opacity: .7; font-variant-numeric: tabular-nums; }
+.track-meta { min-width: 0; }
+.track-title {
+    font-weight: 500;
+    font-size: 1.2vw;
+    color: #fff;
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis;
+}
+.track-sub {
+  margin-top: 2px; font-size: 12px; color: rgba(255,255,255,.75);
+  display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dot { opacity: .6; }
+
+.track-actions { display: flex; flex-direction: row; margin-left: auto; gap: 0.75vw; }
+.btn-icon {
+  width: 38px; height: 34px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.1);
+  /* background: rgba(255,255,255,.04); */
+  color: var(--text); cursor: pointer;
+  transition: transform .06s ease, background .15s ease, border-color .15s ease;
+}
+.btn-icon:hover { background: rgba(22, 19, 19, 0.07); border-color: rgba(255,255,255,.2); }
+.btn-icon:active { transform: translateY(1px) scale(.98); }
