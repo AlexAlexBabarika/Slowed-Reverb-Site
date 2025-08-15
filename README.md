@@ -16,3 +16,9 @@ Change speed and pitch of your favourite songs in browser. Also apply effects, s
   <li>Run <b>"python manage.py runserver"</b> after you finish installing the necessary libraries</li>
   <li>Press <b>ctrl + c</b> to kill server</li>
 </ol>
+
+<h2>Known issues:</h2>
+<bl>
+  <li>YouTube downloading: sadly, it works bad on Windows specifically. Deleting lines 237-240 in views.py helped me. </li>
+</bl>
+
