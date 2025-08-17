@@ -7,7 +7,7 @@ databases:
 services:
   - type: web
     plan: free
-    name: mysite
+    name: slowed-reverb-site
     runtime: python
     buildCommand: "./build.sh"
     startCommand: "gunicorn slowedreverbsite.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000}"
