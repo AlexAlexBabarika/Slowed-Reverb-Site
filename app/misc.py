@@ -1,4 +1,4 @@
-import contextlib, logging, os, re, tempfile, time, wave, ffmpeg
+import contextlib, os, re, tempfile, time, wave, ffmpeg
 from pedalboard.io import AudioFile
 import numpy as np
 from mutagen import File as MutagenFile
@@ -7,17 +7,18 @@ MARKERS = ("_original", "_out", "_reloaded", "_mid")
 ANON_TEMP_RE = re.compile(r"^(tmp|tmp\w+|[^.]+)\.wav$", re.IGNORECASE)
 FILES: set = {}
 
-def cleanup_temp_files(active_paths=(), max_age_seconds=0):
+def cleanup_temp_files(active_paths=(), max_age_seconds=0, *, force=False):
     temp_dir = tempfile.gettempdir()
     now = time.time()
 
     protected = set()
-    for p in active_paths:
-        try:
-            if p:
-                protected.add(os.path.realpath(p))
-        except Exception:
-            pass
+    if not force:
+        for p in active_paths:
+            try:
+                if p:
+                    protected.add(os.path.realpath(p))
+            except Exception:
+                pass
 
     deleted, kept = 0, 0
 
@@ -31,24 +32,24 @@ def cleanup_temp_files(active_paths=(), max_age_seconds=0):
             if ext not in (".wav", ".mp3"):
                 continue
 
-            if os.path.realpath(fpath) in protected:
-                kept += 1
-                continue
-
-            age = now - os.path.getmtime(fpath)
-            if age < max_age_seconds:
-                kept += 1
-                continue
-
             looks_like_ours = (
                 any(m in fname for m in MARKERS) or
                 ANON_TEMP_RE.match(fname) or
                 re.match(r"^[0-9a-f-]{36}", fname)
             )
-
             if not looks_like_ours:
                 kept += 1
                 continue
+
+            if not force:
+                if os.path.realpath(fpath) in protected:
+                    kept += 1
+                    continue
+
+                age = now - os.path.getmtime(fpath)
+                if age < max_age_seconds:
+                    kept += 1
+                    continue
 
             os.remove(fpath)
             print(f"🧹 Deleted: {fpath}")
@@ -187,3 +188,10 @@ def to_wav_with_pedalboard(in_path: str, out_path: str):
             os.replace(tmp_wav, out_path)
         except Exception as e2:
             raise RuntimeError(f"Both pedalboard and ffmpeg decode failed: {e} / {e2}")
+
+def safe_remove(path: str):
+    try:
+        if path and os.path.exists(path):
+            os.remove(path)
+    except Exception as e:
+        print(f"Failed to remove {path}: {e}")

@@ -1,9 +1,7 @@
 import os
 from slowedreverbsite import settings
-from pedalboard import Pedalboard, PitchShift, LowpassFilter, Reverb, Convolution, Gain
+from pedalboard import Pedalboard, PitchShift, LowpassFilter, Reverb, Gain
 import numpy as np
-
-HALL_IR = os.path.join(settings.BASE_DIR, "app", "static", "app", "ir", "hall.wav")
 
 def ensure_float32(song: np.ndarray):
     if song.dtype != np.float32:
@@ -40,21 +38,13 @@ def lowpass(board: Pedalboard, samples: np.ndarray, cutoff_hz: float):
     samples = ensure_float32(samples)
     board.append(LowpassFilter(cutoff_frequency_hz=float(cutoff_hz)))
 
-def reverb(board: Pedalboard, sample_rate: int, samples: np.ndarray, amount: float = 0.3):
+def reverb(board: Pedalboard, samples: np.ndarray, amount: float = 0.3):
     samples = ensure_float32(samples)
     amount = float(max(0.0, min(1.0, amount)))
 
     if amount == 0.0: return samples
-    dry = samples
 
-    if os.path.exists(HALL_IR):
-        try:
-            wet = Pedalboard([Convolution(HALL_IR)])(samples, sample_rate=sample_rate)
-            return (dry * (1.0 - amount) + wet * amount).astype(np.float32)
-        except Exception as e:
-            print(f"Reverb IR failed ({e})")
-
-    wet_level = amount
+    wet_level = amount/3
     dry_level = 1.0 - amount
 
     board.append(Reverb(

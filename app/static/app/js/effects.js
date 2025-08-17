@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     lowpassDisplay.textContent = lpStart.toFixed(0) + " Hz";
     reverbDisplay.textContent  = (rvStart*100).toFixed(0) + "%";
-    gainDisplay.textContent  = rvStart.toFixed(2) + " db";
+    gainDisplay.textContent  = gnStart.toFixed(2) + " db";
 
     lowpassSlider.noUiSlider.on('update', (values, handle) => {
         const val = parseInt(values[handle]);

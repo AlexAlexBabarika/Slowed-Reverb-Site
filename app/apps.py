@@ -13,7 +13,7 @@ class AppConfig(AppConfig):
         atexit.register(misc.clear_all_sessions)
 
         def handle_exit(signum, frame):
-            misc.cleanup_temp_files()
+            misc.cleanup_temp_files(force=True)
             misc.clear_all_sessions()
             sys.exit(0)
 

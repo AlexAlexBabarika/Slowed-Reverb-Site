@@ -116,18 +116,8 @@ def reload_audio(request):
     if not input_path or not os.path.exists(input_path):
         return HttpResponse("Original file missing", status=404)
 
-    # speed = float(request.session.get('speed', 1.0))
-    # pitch = float(request.session.get('pitch', 0.0))
-    # lowpass_hz = int(request.session.get('lowpass', 20000))
-    # reverb = float(request.session.get('reverb', 0.0))
-
     output_path = input_path.replace('_original.wav', '_out.wav')
-    shutil.copyfile(input_path, output_path)
-                    
-    # try:
-    #     process_audio(input_path, output_path, speed, pitch, lowpass_hz, reverb)
-    # except Exception as e:
-    #     return HttpResponse(f"Reload error: {e}", status=500)
+    shutil.copyfile(input_path, output_path)  # overwrites if exists
 
     song["output_path"] = output_path
     song["duration"] = get_audio_duration(output_path)
@@ -142,15 +132,20 @@ def reload_audio(request):
 @csrf_exempt
 def delete_from_playlist(request):
     if request.method == 'POST':
-        index = int(request.POST.get('index', -1))
+        try:
+            index = int(request.POST.get('index', -1))
+        except (TypeError, ValueError):
+            return redirect('index')
+
         playlist = request.session.get('playlist', [])
         if 0 <= index < len(playlist):
-            try:
-                os.remove(playlist[index]['output_path'])
-            except:
-                pass
+            song = playlist[index]
+            safe_remove(song.get('output_path'))
+            safe_remove(song.get('original_path'))
             del playlist[index]
             request.session['playlist'] = playlist
+            request.session.modified = True
+
     return redirect('index')
 
 @csrf_exempt
@@ -175,20 +170,23 @@ def serve_audio(request, index):
     reverb = float(request.session.get('reverb', 0.0))
     gain = float(request.session.get('gain', 0.0))
 
-    tmp_out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+    output_path = song.get('output_path') or orig.replace('_original.wav', '_out.wav')
+
     try:
-        process_audio(orig, tmp_out, speed, pitch, lowpass_hz, reverb, gain)
+        process_audio(orig, output_path, speed, pitch, lowpass_hz, reverb, gain)
     except Exception as e:
         return HttpResponse(f"Processing error: {e}", status=500)
 
-    song["output_path"] = tmp_out
-    song["duration"] = get_audio_duration(tmp_out)
+    song["output_path"] = output_path
+    song["duration"] = get_audio_duration(output_path)
     playlist[idx] = song
     request.session['playlist'] = playlist
     request.session['last_played_index'] = idx
     request.session.modified = True
 
-    return FileResponse(open(tmp_out, 'rb'), content_type='audio/wav')
+    resp = FileResponse(open(output_path, 'rb'), content_type='audio/wav')
+    resp['Cache-Control'] = 'no-store'
+    return resp
 
 @require_POST
 def save_values_to_session(request):
@@ -358,7 +356,7 @@ def process_audio(in_path: str, out_path: str,
         if lowpass_hz and lowpass_hz < 20000: lowpass(board, samples, lowpass_hz)
 
         if reverb_amount and reverb_amount > 0.0:
-            reverb(board, sr, samples, reverb_amount)
+            reverb(board, samples, reverb_amount)
 
         samples = board(samples, sample_rate=sr)
 
