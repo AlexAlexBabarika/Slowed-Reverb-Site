@@ -162,7 +162,7 @@
                         <!-- <div>Enter YouTube url:</div> -->
                         <div style="display: flex; align-items: center; gap: 0.5em;">
                             <input id="url-input" type="url" style="width: 100%;" name="youtube_url" placeholder="Enter YouTube URL to download" required>
-                            <button type="button" onclick="submitYouTubeForm()">⬇</button>
+                            <button type="button" onclick="submitYouTubeForm()" style="min-width: 2.5vw;">⬇</button>
                         </div>
                         <script>
                             async function submitYouTubeForm() {
@@ -238,7 +238,7 @@
                                 data-index="{{ last_played_index|default:0 }}"
                                 data-total="{{ playlist|length }}" style="width: 100%; max-height: 80px;">
                             </div>
-                            <button id="cycle-btn">↺</button>
+                            <button id="cycle-btn" style="min-width: 2.5vw;">↺</button>
                             <a id="download-btn" href="#" download><span>⬇</span></a>
                         </div>
                     </div>
@@ -344,6 +344,9 @@
                 if (isCycle) {
                     ws.setTime(0);
                     ws.play();
+                } else {
+                    loadAndPlay(currentIndex + 1);
+                    makePlaylistCellActive(currentIndex);
                 }
             });
 
