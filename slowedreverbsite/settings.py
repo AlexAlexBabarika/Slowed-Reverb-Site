@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # digaf
-SECRET_KEY = 'django-insecure-#xuts=caodm%dq-31)ba6&qhy898dx98chb%nha8m1)r(7xt*9'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-...')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = 'RENDER' not in os.environ
