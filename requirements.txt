@@ -4,3 +4,8 @@ mutagen
 yt-dlp
 pedalboard
 numpy
+gunicorn
+uvicorn
+dj-database-url>=2.0
+whitenoise
+psycopg2-binary
