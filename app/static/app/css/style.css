@@ -35,7 +35,7 @@ input[type="url"] {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none; 
-  border: 2px solid var(--text);
+  border: 1px solid var(--text);
   border-radius: 16px;
   background-color: transparent;
   min-height: clamp(36px, 2.5vw, 48px);
@@ -83,7 +83,7 @@ input[type="url"]:hover {
 .box {
   display: flex;
   flex-direction: column;
-  border: 2px solid var(--text);
+  border: 1px solid var(--text);
   border-radius: 16px;
   text-align: left;
   padding: 2vh;
@@ -110,7 +110,7 @@ input[type="url"]:hover {
 }
 
 .lower-box { 
-  border: 2px solid white;
+  border: 1px solid white;
   padding: 20px;
   border-radius: 16px;
   text-align: center;
@@ -138,7 +138,7 @@ button {
   display: flex;
   justify-content: center; 
   align-items: center; 
-  border: 2px solid var(--text);
+  border: 1px solid var(--text);
   border-radius: 16px;
   background-color: transparent;
   min-height: clamp(36px, 2.5vw, 48px);
@@ -153,8 +153,8 @@ button:hover {
 }
 
 a {
-  border: 2px solid var(--text);
-  border-radius: 16px;
+  border: 1px solid var(--text);
+  border-radius: 8px;
   background-color: transparent;
   min-height: clamp(36px, 2.5vw, 48px);
   min-width: clamp(36px, 2.5vw, 48px);
@@ -181,7 +181,7 @@ a:hover {
   align-self: stretch;
   padding: 16px;
   border-radius: 16px;
-  border: 2px solid var(--text);
+  border: 1px solid var(--text);
   box-sizing: border-box;
   box-shadow: 0 0 12px var(--shadow);
 }
@@ -202,7 +202,7 @@ a:hover {
 }
 .custom-player button {
   background: none;
-  border: 2px solid var(--text);
+  border: 1px solid var(--text);
   color: var(--text);
   font-size: 20px;
   padding: 4px 10px;
@@ -297,8 +297,8 @@ a:hover {
 .btn-icon {
   width: clamp(32px, 3vw, 38px);
   height: clamp(28px, 2.8vw, 34px);
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  border: 2px solid rgba(255,255,255,.1);
   color: var(--text); cursor: pointer;
   transition: transform .06s ease, background .15s ease, border-color .15s ease;
 }
@@ -319,14 +319,17 @@ a:hover {
   font-weight: 700;
   color: var(--text);
 }
+
 .loading-box {
   padding: 2rem 3rem;
   border: 2px solid var(--text);
   border-radius: 16px;
   box-shadow: 0 0 24px var(--shadow);
   text-align: center;
-  background-color: #111;
   animation: pulse 1s ease-in-out infinite;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(5.5px);
+  -webkit-backdrop-filter: blur(5.5px);
 }
 @keyframes pulse {
   0%   { transform: scale(1); }
