@@ -350,14 +350,17 @@ def process_audio(in_path: str, out_path: str,
     else: 
         samples, _ = change_speed(sr, samples, speed_change)
 
-    try:
-        if gain_db and gain_db != 0 : gain(board, samples, gain_db)
-            
+    try:            
         if lowpass_hz and lowpass_hz < 20000: lowpass(board, samples, lowpass_hz)
 
         if reverb_amount and reverb_amount > 0.0:
             reverb(board, samples, reverb_amount)
 
+            if samples.size:
+                peak = float(np.max(np.abs(samples)))
+                if peak > 1.0: samples = samples / (peak * 1.06)
+
+        if gain_db and gain_db != 0 : gain(board, samples, gain_db)
         samples = board(samples, sample_rate=sr)
 
     except Exception as e:

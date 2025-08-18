@@ -1,4 +1,4 @@
-import os
+from math import cos, sin, pi
 from slowedreverbsite import settings
 from pedalboard import Pedalboard, PitchShift, LowpassFilter, Reverb, Gain
 import numpy as np
@@ -45,7 +45,10 @@ def reverb(board: Pedalboard, samples: np.ndarray, amount: float = 0.3):
     if amount == 0.0: return samples
 
     wet_level = amount/3
-    dry_level = 1.0 - amount
+    dry_level = 1.0 - wet_level
+
+    headroom_db = -6.0 * amount
+    board.append(Gain(gain_db=headroom_db))
 
     board.append(Reverb(
             room_size=0.8,
