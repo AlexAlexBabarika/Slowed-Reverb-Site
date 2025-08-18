@@ -1,6 +1,9 @@
 /* Global + variables */
 *, *::before, *::after { box-sizing: border-box; }
 
+html, body { height: 100%; }
+body { min-height: 100svh; }
+
 :root {
   --text: rgb(255, 247, 232);
   --background_dark: #101010;
@@ -57,7 +60,7 @@ input[type="url"]:hover {
   gap: 4vh;
   justify-content: center;
   align-items: stretch;
-  width: min(var(--content-max), 96vw);
+  width: min(var(--content-max), 100%);
   margin: 0 auto;
 }
 
@@ -65,6 +68,7 @@ input[type="url"]:hover {
   display: flex;
   flex-direction: row;
   align-items: stretch;
+  width: 100%;
   gap: 3vh;
   flex-wrap: wrap; /* allow wrap/stack on smaller widths */
 }
@@ -92,10 +96,10 @@ input[type="url"]:hover {
   transition: transform 0.3s ease;
 
   flex: 1 1 520px;
-  min-width: 320px; 
+  min-width: 0; 
   max-width: 100%;
-  min-height: 570px;
-  max-height: 650px;
+  min-height: clamp(380px, 55svh, 640px);
+  max-height: 40vw;
   height: auto;
 }
 .box:hover { transform: scale(1.03); }
@@ -331,15 +335,34 @@ a:hover {
   backdrop-filter: blur(5.5px);
   -webkit-backdrop-filter: blur(5.5px);
 }
+
 @keyframes pulse {
   0%   { transform: scale(1); }
   50%  { transform: scale(1.06); }
   100% { transform: scale(1); }
 }
 
-/* Mobile tweaks */
 @media (max-width: 900px) {
-  .track { height: auto; padding: 10px; }
-  .box { flex-basis: 100%; min-width: 0; }  /* stack the two main boxes */
-  .playlist-scroll { max-height: 50vh; }
+  .container { flex-direction: column; }
+  .box {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: unset;
+    max-height: none;
+  }
+  .lower-box { width: 100%; }
+  .playlist-scroll { max-height: 40svh; }
+}
+
+@media (hover: none) {
+  h1:hover,
+  .box:hover,
+  .lower-box:hover,
+  input[type="url"]:hover,
+  button:hover,
+  a:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
