@@ -122,3 +122,21 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+import os
+
+# --- Audio ingest / delivery (see docs/01-backend-performance.md) ---
+# Directory holding compressed track artifacts. Overridden by env in docs/03.
+PROCESSING_DIR = os.environ.get("PROCESSING_DIR", str(BASE_DIR / "processing_data"))
+
+# Output codec. Default Opus/Ogg; docs/02 may switch to AAC/m4a for Safari.
+AUDIO_CODEC = os.environ.get("AUDIO_CODEC", "libopus")
+AUDIO_EXT = os.environ.get("AUDIO_EXT", ".ogg")
+AUDIO_CONTENT_TYPE = os.environ.get("AUDIO_CONTENT_TYPE", "audio/ogg")
+AUDIO_BITRATE = os.environ.get("AUDIO_BITRATE", "128k")
+
+# Reject sources longer than this before transcoding.
+MAX_AUDIO_DURATION_SECONDS = int(os.environ.get("MAX_AUDIO_DURATION_SECONDS", "900"))
+
+# Accepted upload extensions (lowercase, no dot).
+ALLOWED_UPLOAD_EXTS = {"mp3", "wav", "flac", "m4a", "aac", "ogg", "opus"}
