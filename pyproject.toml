@@ -1,0 +1,48 @@
+[project]
+name = "slowedreverbsite"
+version = "0.1.0"
+description = "Change speed and pitch of your favourite songs in browser, with effects like reverb."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "django",
+    "ffmpeg-python",
+    "mutagen",
+    "yt-dlp",
+    "pedalboard",
+    "numpy",
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "mypy",
+    "django-stubs[compatible-mypy]",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "DJ",  # flake8-django
+]
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["mypy_django_plugin.main"]
+ignore_missing_imports = true
+exclude = ["migrations/"]
+
+[tool.django-stubs]
+django_settings_module = "slowedreverbsite.settings"
