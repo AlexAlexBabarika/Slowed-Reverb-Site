@@ -65,3 +65,8 @@ class TracksApiTests(TestCase):
     def test_delete_missing_returns_404(self):
         resp = self.client.delete("/api/tracks/00000000-0000-0000-0000-000000000000")
         self.assertEqual(resp.status_code, 404)
+
+    def test_get_tracks_sets_csrf_cookie(self):
+        response = self.client.get("/api/tracks")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("csrftoken", response.cookies)

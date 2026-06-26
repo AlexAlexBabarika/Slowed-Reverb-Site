@@ -3,6 +3,7 @@ import os
 
 from django.conf import settings
 from django.http import JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
 from .audio_ingest import (
@@ -28,6 +29,7 @@ def _track_json(track: dict) -> dict:
     return {**track, "url": f"/api/tracks/{track['id']}/audio"}
 
 
+@ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def tracks_collection(request):
     if request.method == "GET":
