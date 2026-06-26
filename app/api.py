@@ -1,10 +1,16 @@
+import json
 import os
 
 from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from .audio_ingest import IngestError, probe_audio, transcode_to_compressed
+from .audio_ingest import (
+    IngestError,
+    download_youtube,
+    probe_audio,
+    transcode_to_compressed,
+)
 from .http_range import range_file_response
 from .misc import safe_remove
 from .track_store import (
@@ -89,3 +95,41 @@ def track_audio(request, track_id):
         track_audio_path(track_id),
         settings.AUDIO_CONTENT_TYPE,
     )
+
+
+@require_http_methods(["POST"])
+def youtube_track(request):
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"error": "invalid JSON"}, status=400)
+
+    url = (data.get("url") or "").strip()
+    if not url:
+        return JsonResponse({"error": "no url provided"}, status=400)
+
+    track_id = new_track_id()
+    processing_dir()
+    dest_base = os.path.join(settings.PROCESSING_DIR, f"{track_id}_src")
+    out_path = track_audio_path(track_id)
+    downloaded = None
+
+    try:
+        downloaded, meta = download_youtube(url, dest_base)
+        transcode_to_compressed(downloaded, out_path)
+        out_meta = probe_audio(out_path)
+    except IngestError as exc:
+        safe_remove(out_path)
+        return JsonResponse({"error": str(exc)}, status=400)
+    finally:
+        safe_remove(downloaded)
+
+    track = {
+        "id": track_id,
+        "filename": meta.get("title") or "YouTube audio",
+        "artist": meta.get("artist") or "",
+        "duration": out_meta.get("duration", 0.0),
+    }
+    add_track(request.session, track)
+    request.session.modified = True
+    return JsonResponse(_track_json(track))
