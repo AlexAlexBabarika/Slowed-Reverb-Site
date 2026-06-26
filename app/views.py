@@ -1,16 +1,22 @@
+import json
+import os
 import platform
 import shutil
-from django.shortcuts import render, redirect
-from django.http import HttpResponse, FileResponse, HttpResponseBadRequest, JsonResponse
+import tempfile
+import time
+import uuid
+
+import numpy as np
+import yt_dlp
+from django.http import FileResponse, HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from mutagen import File as MutagenFile
-import os, tempfile, time, yt_dlp, uuid, json
-
 from pedalboard.io import AudioFile
-import numpy as np
+
+from .effects import *
 from .misc import *
-from .effects import * 
 
 format_map = {
     'mp3': 'mp3', 'wav': 'wav', 'flac': 'flac', 'm4a': 'm4a',
@@ -375,7 +381,7 @@ def process_audio(in_path: str, out_path: str,
             -Pitch: {pitch_change}\n\
             -Lowpass: {lowpass_hz}\n -Reverb: {reverb_amount}")
 
-    except Exception as e:
+    except Exception:
         print("writing output failed")
 
 def collect_active_paths_from_session(request):

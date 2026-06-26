@@ -1,7 +1,14 @@
-import contextlib, os, re, tempfile, time, wave, ffmpeg
-from pedalboard.io import AudioFile
+import contextlib
+import os
+import re
+import tempfile
+import time
+import wave
+
+import ffmpeg
 import numpy as np
 from mutagen import File as MutagenFile
+from pedalboard.io import AudioFile
 
 MARKERS = ("_original", "_out", "_reloaded", "_mid")
 ANON_TEMP_RE = re.compile(r"^(tmp|tmp\w+|[^.]+)\.wav$", re.IGNORECASE)
