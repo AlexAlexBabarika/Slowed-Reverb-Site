@@ -6,6 +6,7 @@ docs/
 __pycache__/
 *.py[cod]
 .cpython-313.pyc
+app/__pycache__/
 
 # uv / virtualenv
 .venv/
@@ -13,3 +14,5 @@ __pycache__/
 # Tooling caches
 .ruff_cache/
 .mypy_cache/
+
+db.sqlite3
