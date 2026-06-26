@@ -10,6 +10,7 @@ export class FakeAudioBuffer {
     this.numberOfChannels = channels;
     this.data = Array.from({ length: channels }, () => new Float32Array(length));
   }
+  get duration(): number { return this.length / this.sampleRate; }
   getChannelData(ch: number): Float32Array { return this.data[ch]; }
 }
 
