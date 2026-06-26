@@ -7,10 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "django",
     "ffmpeg-python",
-    "mutagen",
     "yt-dlp",
-    "pedalboard",
-    "numpy",
 ]
 
 [dependency-groups]
