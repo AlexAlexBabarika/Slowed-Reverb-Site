@@ -1,8 +1,11 @@
 import atexit
-from django.apps import AppConfig
-from . import misc
+import signal
 import sys
-import signal 
+
+from django.apps import AppConfig
+
+from . import misc
+
 
 class AppConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'

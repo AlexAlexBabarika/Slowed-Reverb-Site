@@ -12,10 +12,18 @@ Change speed and pitch of your favourite songs in browser. Also apply effects, s
       <li><b>Arch:</b> pacman -S ffmpeg</li>
     </ul>
   </li>
-  <li>Run: <b>pip install -r requirements.txt</b></li>
-  <li>Run <b>"python manage.py runserver"</b> after you finish installing the necessary libraries</li>
+  <li>Install <a href="https://docs.astral.sh/uv/">uv</a></li>
+  <li>Run: <b>uv sync</b> to install dependencies into a virtual environment</li>
+  <li>Run <b>"uv run python manage.py runserver"</b> to start the server</li>
   <li>Press <b>ctrl + c</b> to kill server</li>
 </ol>
+
+<h2>Development</h2>
+<ul>
+  <li>Lint: <b>uv run ruff check .</b> (auto-fix with <b>uv run ruff check --fix .</b>)</li>
+  <li>Format: <b>uv run ruff format .</b></li>
+  <li>Type check: <b>uv run mypy .</b></li>
+</ul>
 
 <h2>Known issues:</h2>
 <bl>

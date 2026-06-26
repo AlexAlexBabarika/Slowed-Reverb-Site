@@ -1,7 +1,6 @@
-from math import cos, sin, pi
-from slowedreverbsite import settings
-from pedalboard import Pedalboard, PitchShift, LowpassFilter, Reverb, Gain
 import numpy as np
+from pedalboard import Gain, LowpassFilter, Pedalboard, PitchShift, Reverb
+
 
 def ensure_float32(song: np.ndarray):
     if song.dtype != np.float32:
