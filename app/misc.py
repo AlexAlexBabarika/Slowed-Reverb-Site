@@ -14,6 +14,7 @@ MARKERS = ("_original", "_out", "_reloaded", "_mid")
 ANON_TEMP_RE = re.compile(r"^(tmp|tmp\w+|[^.]+)\.wav$", re.IGNORECASE)
 FILES: set = {}
 
+
 def cleanup_temp_files(active_paths=(), max_age_seconds=0, *, force=False):
     temp_dir = tempfile.gettempdir()
     now = time.time()
@@ -40,9 +41,9 @@ def cleanup_temp_files(active_paths=(), max_age_seconds=0, *, force=False):
                 continue
 
             looks_like_ours = (
-                any(m in fname for m in MARKERS) or
-                ANON_TEMP_RE.match(fname) or
-                re.match(r"^[0-9a-f-]{36}", fname)
+                any(m in fname for m in MARKERS)
+                or ANON_TEMP_RE.match(fname)
+                or re.match(r"^[0-9a-f-]{36}", fname)
             )
             if not looks_like_ours:
                 kept += 1
@@ -67,10 +68,13 @@ def cleanup_temp_files(active_paths=(), max_age_seconds=0, *, force=False):
 
     print(f"Cleanup complete. Deleted={deleted}, Kept={kept}")
 
+
 def clear_all_sessions():
     from django.contrib.sessions.models import Session
+
     Session.objects.all().delete()
     print("✅ All Django sessions wiped from database.")
+
 
 def get_sample_rate(file_obj):
     file_bytes = file_obj.read()
@@ -86,6 +90,7 @@ def get_sample_rate(file_obj):
     finally:
         os.unlink(path)
     return 44100
+
 
 def get_audio_duration(path: str) -> int:
     try:
@@ -109,7 +114,7 @@ def get_audio_duration(path: str) -> int:
 
     # 2) WAV fallback
     try:
-        with contextlib.closing(wave.open(path, 'rb')) as wf:
+        with contextlib.closing(wave.open(path, "rb")) as wf:
             frames = wf.getnframes()
             rate = wf.getframerate()
             if rate > 0:
@@ -126,6 +131,7 @@ def get_audio_duration(path: str) -> int:
         pass
 
     return 0
+
 
 def to_wav_with_pedalboard(in_path: str, out_path: str):
     """Decode any supported audio to WAV using Pedalboard; fallback to ffmpeg on failure.
@@ -146,9 +152,13 @@ def to_wav_with_pedalboard(in_path: str, out_path: str):
                         break
                     chunks.append(buf)
                 if not chunks:
-                    raise ValueError("No audio data read (empty file or unsupported format)")
+                    raise ValueError(
+                        "No audio data read (empty file or unsupported format)"
+                    )
                 # Concatenate along first axis (frames)
-                samples = chunks[0] if len(chunks) == 1 else np.concatenate(chunks, axis=0)
+                samples = (
+                    chunks[0] if len(chunks) == 1 else np.concatenate(chunks, axis=0)
+                )
                 num_channels = 1 if samples.ndim == 1 else samples.shape[1]
         if samples.size == 0:
             raise ValueError("Decoded audio has zero samples")
@@ -167,7 +177,7 @@ def to_wav_with_pedalboard(in_path: str, out_path: str):
         if samples.dtype != np.float32:
             if np.issubdtype(samples.dtype, np.integer):
                 max_val = float(np.iinfo(samples.dtype).max)
-                samples = (samples.astype(np.float32) / max_val)
+                samples = samples.astype(np.float32) / max_val
             else:
                 samples = samples.astype(np.float32)
 
@@ -179,22 +189,24 @@ def to_wav_with_pedalboard(in_path: str, out_path: str):
         if samples.ndim == 2 and samples.shape[1] == 0:
             raise ValueError("Zero channel audio after normalization")
 
-        with AudioFile(out_path, 'w', samplerate=sr or 44100, num_channels=num_channels) as g:
+        with AudioFile(
+            out_path, "w", samplerate=sr or 44100, num_channels=num_channels
+        ) as g:
             g.write(samples)
     except Exception as e:
         # Fallback to ffmpeg for robust decoding
         try:
             tmp_wav = out_path + "._ffmpeg_tmp.wav"
             (
-                ffmpeg
-                .input(in_path)
-                .output(tmp_wav, acodec='pcm_s16le', ac=2, ar=44100, loglevel='error')
+                ffmpeg.input(in_path)
+                .output(tmp_wav, acodec="pcm_s16le", ac=2, ar=44100, loglevel="error")
                 .overwrite_output()
                 .run()
             )
             os.replace(tmp_wav, out_path)
         except Exception as e2:
             raise RuntimeError(f"Both pedalboard and ffmpeg decode failed: {e} / {e2}")
+
 
 def safe_remove(path: str):
     try:

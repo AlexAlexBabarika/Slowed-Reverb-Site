@@ -50,6 +50,8 @@ class TranscodeTests(SimpleTestCase):
 
     def test_download_youtube_wraps_failures(self):
         with patch("app.audio_ingest.yt_dlp.YoutubeDL") as ydl_cls:
-            ydl_cls.return_value.__enter__.return_value.extract_info.side_effect = RuntimeError("boom")
+            ydl_cls.return_value.__enter__.return_value.extract_info.side_effect = (
+                RuntimeError("boom")
+            )
             with self.assertRaises(IngestError):
                 download_youtube("https://youtu.be/x", os.path.join(self.tmp, "yt"))

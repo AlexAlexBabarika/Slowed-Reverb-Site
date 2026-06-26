@@ -19,18 +19,24 @@ from .effects import *
 from .misc import *
 
 format_map = {
-    'mp3': 'mp3', 'wav': 'wav', 'flac': 'flac', 'm4a': 'm4a',
-    'aac': 'aac', 'ogg': 'ogg', 'opus': 'opus',
+    "mp3": "mp3",
+    "wav": "wav",
+    "flac": "flac",
+    "m4a": "m4a",
+    "aac": "aac",
+    "ogg": "ogg",
+    "opus": "opus",
 }
+
 
 @csrf_exempt
 def index(request):
-    if request.method == 'POST' and request.FILES.getlist('audio_file'):
+    if request.method == "POST" and request.FILES.getlist("audio_file"):
         playlist = request.session.get("playlist", [])
 
-        for file in request.FILES.getlist('audio_file'):
+        for file in request.FILES.getlist("audio_file"):
             filename = file.name
-            ext = os.path.splitext(filename)[1].lower().replace('.', '')
+            ext = os.path.splitext(filename)[1].lower().replace(".", "")
             input_format = format_map.get(ext)
             if not input_format:
                 continue
@@ -63,100 +69,109 @@ def index(request):
                     pass
                 continue
 
-            output_path = original_path.replace('_original.wav', '_out.wav')
+            output_path = original_path.replace("_original.wav", "_out.wav")
 
             try:
                 os.remove(input_path)
             except:
                 pass
 
-            playlist.append({
-                "filename": filename,
-                "output_path": output_path,
-                "original_path": original_path,
-                "duration": get_audio_duration(original_path),
-                "artist": artist
-            })
+            playlist.append(
+                {
+                    "filename": filename,
+                    "output_path": output_path,
+                    "original_path": original_path,
+                    "duration": get_audio_duration(original_path),
+                    "artist": artist,
+                }
+            )
 
         request.session["playlist"] = playlist
         if "last_played_index" not in request.session:
             request.session["last_played_index"] = 0
-        return redirect('index')
+        return redirect("index")
 
-    speed_value = request.session.get('speed', 1.0)
-    pitch_value = request.session.get('pitch', 0.0)
-    speed_pitch_value = request.session.get('speed_pitch', '0.00 semitones')
+    speed_value = request.session.get("speed", 1.0)
+    pitch_value = request.session.get("pitch", 0.0)
+    speed_pitch_value = request.session.get("speed_pitch", "0.00 semitones")
     playlist = request.session.get("playlist", [])
     audio_available = any(os.path.exists(song["output_path"]) for song in playlist)
-    last_played_index = request.session.get('last_played_index', None)
-    lowpass_hz = int(request.session.get('lowpass', 20000))
-    reverb_amt = float(request.session.get('reverb', 0.0))
-    gain_db = float(request.session.get('gain', 0.0))
+    last_played_index = request.session.get("last_played_index", None)
+    lowpass_hz = int(request.session.get("lowpass", 20000))
+    reverb_amt = float(request.session.get("reverb", 0.0))
+    gain_db = float(request.session.get("gain", 0.0))
 
-    return render(request, "app/index.html", {
-        "audio_available": audio_available,
-        "speed_value": speed_value,
-        "pitch_value": pitch_value,
-        "speed_pitch_value": speed_pitch_value,
-        "playlist": playlist,
-        "timestamp": int(time.time()),
-        "last_played_index": last_played_index, 
-        "lowpass": lowpass_hz,
-        "reverb": reverb_amt,
-        "gain": gain_db
-    })
+    return render(
+        request,
+        "app/index.html",
+        {
+            "audio_available": audio_available,
+            "speed_value": speed_value,
+            "pitch_value": pitch_value,
+            "speed_pitch_value": speed_pitch_value,
+            "playlist": playlist,
+            "timestamp": int(time.time()),
+            "last_played_index": last_played_index,
+            "lowpass": lowpass_hz,
+            "reverb": reverb_amt,
+            "gain": gain_db,
+        },
+    )
+
 
 @csrf_exempt
 def reload_audio(request):
     try:
-        index = int(request.POST.get('index'))
+        index = int(request.POST.get("index"))
     except (TypeError, ValueError):
         return HttpResponse("Invalid index", status=400)
 
-    playlist = request.session.get('playlist', [])
+    playlist = request.session.get("playlist", [])
     if index < 0 or index >= len(playlist):
         return HttpResponse("Index out of range", status=400)
 
     song = playlist[index]
-    input_path = song.get('original_path')
+    input_path = song.get("original_path")
     if not input_path or not os.path.exists(input_path):
         return HttpResponse("Original file missing", status=404)
 
-    output_path = input_path.replace('_original.wav', '_out.wav')
+    output_path = input_path.replace("_original.wav", "_out.wav")
     shutil.copyfile(input_path, output_path)  # overwrites if exists
 
     song["output_path"] = output_path
     song["duration"] = get_audio_duration(output_path)
     playlist[index] = song
 
-    request.session['playlist'] = playlist
-    request.session['last_played_index'] = index
+    request.session["playlist"] = playlist
+    request.session["last_played_index"] = index
     request.session.modified = True
 
-    return redirect('index')
+    return redirect("index")
+
 
 @csrf_exempt
 def delete_from_playlist(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
-            index = int(request.POST.get('index', -1))
+            index = int(request.POST.get("index", -1))
         except (TypeError, ValueError):
-            return redirect('index')
+            return redirect("index")
 
-        playlist = request.session.get('playlist', [])
+        playlist = request.session.get("playlist", [])
         if 0 <= index < len(playlist):
             song = playlist[index]
-            safe_remove(song.get('output_path'))
-            safe_remove(song.get('original_path'))
+            safe_remove(song.get("output_path"))
+            safe_remove(song.get("original_path"))
             del playlist[index]
-            request.session['playlist'] = playlist
+            request.session["playlist"] = playlist
             request.session.modified = True
 
-    return redirect('index')
+    return redirect("index")
+
 
 @csrf_exempt
 def serve_audio(request, index):
-    playlist = request.session.get('playlist', [])
+    playlist = request.session.get("playlist", [])
 
     try:
         idx = int(index)
@@ -166,17 +181,17 @@ def serve_audio(request, index):
         return HttpResponse("Index out of range", status=400)
 
     song = playlist[idx]
-    orig = song.get('original_path')
+    orig = song.get("original_path")
     if not orig or not os.path.exists(orig):
         return HttpResponse("Original file missing", status=404)
 
-    speed = float(request.session.get('speed', 1.0))
-    pitch = float(request.session.get('pitch', 0.0))
-    lowpass_hz = int(request.session.get('lowpass', 20000))
-    reverb = float(request.session.get('reverb', 0.0))
-    gain = float(request.session.get('gain', 0.0))
+    speed = float(request.session.get("speed", 1.0))
+    pitch = float(request.session.get("pitch", 0.0))
+    lowpass_hz = int(request.session.get("lowpass", 20000))
+    reverb = float(request.session.get("reverb", 0.0))
+    gain = float(request.session.get("gain", 0.0))
 
-    output_path = song.get('output_path') or orig.replace('_original.wav', '_out.wav')
+    output_path = song.get("output_path") or orig.replace("_original.wav", "_out.wav")
 
     try:
         process_audio(orig, output_path, speed, pitch, lowpass_hz, reverb, gain)
@@ -186,28 +201,30 @@ def serve_audio(request, index):
     song["output_path"] = output_path
     song["duration"] = get_audio_duration(output_path)
     playlist[idx] = song
-    request.session['playlist'] = playlist
-    request.session['last_played_index'] = idx
+    request.session["playlist"] = playlist
+    request.session["last_played_index"] = idx
     request.session.modified = True
 
-    resp = FileResponse(open(output_path, 'rb'), content_type='audio/wav')
-    resp['Cache-Control'] = 'no-store'
+    resp = FileResponse(open(output_path, "rb"), content_type="audio/wav")
+    resp["Cache-Control"] = "no-store"
     return resp
+
 
 @require_POST
 def save_values_to_session(request):
     data = json.loads(request.body.decode("utf-8"))
 
-    request.session['speed'] = float(data.get('speed', 1.0))
-    request.session['pitch'] = int(data.get('pitch', 0))
-    request.session['speed_pitch'] = data.get('speed_pitch', '')
+    request.session["speed"] = float(data.get("speed", 1.0))
+    request.session["pitch"] = int(data.get("pitch", 0))
+    request.session["speed_pitch"] = data.get("speed_pitch", "")
 
-    request.session['lowpass'] = int(data.get('lowpass', 20000))
-    request.session['reverb'] = float(data.get('reverb', 0.0))
-    request.session['gain'] = float(data.get('gain', 0.0))
+    request.session["lowpass"] = int(data.get("lowpass", 20000))
+    request.session["reverb"] = float(data.get("reverb", 0.0))
+    request.session["gain"] = float(data.get("gain", 0.0))
     request.session.modified = True
 
     return JsonResponse({"ok": True})
+
 
 @csrf_exempt
 def download_from_youtube(request):
@@ -227,21 +244,23 @@ def download_from_youtube(request):
     output_path = f"{download_base}_out.wav"
 
     ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': download_template,
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-        'quiet': True,
-        'encoding': 'utf-8',
+        "format": "bestaudio/best",
+        "outtmpl": download_template,
+        "postprocessors": [
+            {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "mp3",
+                "preferredquality": "192",
+            }
+        ],
+        "quiet": True,
+        "encoding": "utf-8",
     }
 
-    if platform.system() == 'Windows':
-        ydl_opts['cookiesfrombrowser'] = ('firefox',) 
+    if platform.system() == "Windows":
+        ydl_opts["cookiesfrombrowser"] = ("firefox",)
     else:
-        ydl_opts['cookiesfrombrowser'] = ('chrome',)
+        ydl_opts["cookiesfrombrowser"] = ("chrome",)
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -260,26 +279,30 @@ def download_from_youtube(request):
     except Exception as e:
         return HttpResponse(f"Conversion failed: {e}", status=500)
 
-    speed = float(request.session.get('speed', 1.0))
-    pitch = float(request.session.get('pitch', 0.0))
-    lowpass_hz = int(request.session.get('lowpass', 20000))
-    reverb = float(request.session.get('reverb', 0.0))
-    gain = float(request.session.get('gain', 0.0))
+    speed = float(request.session.get("speed", 1.0))
+    pitch = float(request.session.get("pitch", 0.0))
+    lowpass_hz = int(request.session.get("lowpass", 20000))
+    reverb = float(request.session.get("reverb", 0.0))
+    gain = float(request.session.get("gain", 0.0))
 
     try:
-        process_audio(original_path, output_path, speed, pitch, lowpass_hz, reverb, gain)
+        process_audio(
+            original_path, output_path, speed, pitch, lowpass_hz, reverb, gain
+        )
     except Exception as e:
         return HttpResponse(f"Processing failed: {e}", status=500)
 
     # Add to session playlist
     playlist = request.session.get("playlist", [])
-    playlist.append({
-        "filename": video_title,
-        "output_path": output_path,
-        "original_path": original_path,
-        "duration": get_audio_duration(output_path),
-        "artist": author_name,
-    })
+    playlist.append(
+        {
+            "filename": video_title,
+            "output_path": output_path,
+            "original_path": original_path,
+            "duration": get_audio_duration(output_path),
+            "artist": author_name,
+        }
+    )
     request.session["playlist"] = playlist
     request.session["last_played_index"] = len(playlist) - 1
 
@@ -288,7 +311,8 @@ def download_from_youtube(request):
     except:
         pass
 
-    return redirect('index')
+    return redirect("index")
+
 
 @csrf_exempt
 def set_last_played(request, index):
@@ -299,9 +323,10 @@ def set_last_played(request, index):
     except ValueError:
         return HttpResponseBadRequest("Invalid index")
 
-    request.session['last_played_index'] = index
+    request.session["last_played_index"] = index
     request.session.modified = True
     return JsonResponse({"status": "ok", "last_played_index": index})
+
 
 @csrf_exempt
 def cleanup_view(request):
@@ -309,9 +334,16 @@ def cleanup_view(request):
     cleanup_temp_files(active_paths=active)
     return JsonResponse({"status": "ok"})
 
-def process_audio(in_path: str, out_path: str,
-                speed_change: float, pitch_change: int,
-                lowpass_hz: int, reverb_amount: float, gain_db: float):
+
+def process_audio(
+    in_path: str,
+    out_path: str,
+    speed_change: float,
+    pitch_change: int,
+    lowpass_hz: int,
+    reverb_amount: float,
+    gain_db: float,
+):
     try:
         with AudioFile(in_path) as f:
             sr = f.samplerate or 44100
@@ -326,8 +358,12 @@ def process_audio(in_path: str, out_path: str,
                         break
                     chunks.append(buf)
                 if not chunks:
-                    raise ValueError("No audio data read (empty file or unsupported format)")
-                samples = chunks[0] if len(chunks) == 1 else np.concatenate(chunks, axis=0)
+                    raise ValueError(
+                        "No audio data read (empty file or unsupported format)"
+                    )
+                samples = (
+                    chunks[0] if len(chunks) == 1 else np.concatenate(chunks, axis=0)
+                )
 
     except:
         print("Failed reading audio via pedalboard")
@@ -339,7 +375,9 @@ def process_audio(in_path: str, out_path: str,
             samples = samples.T
         if samples.dtype != np.float32:
             if np.issubdtype(samples.dtype, np.integer):
-                samples = samples.astype(np.float32) / float(np.iinfo(samples.dtype).max)
+                samples = samples.astype(np.float32) / float(
+                    np.iinfo(samples.dtype).max
+                )
             else:
                 samples = samples.astype(np.float32)
         if not np.isfinite(samples).all():
@@ -353,20 +391,23 @@ def process_audio(in_path: str, out_path: str,
         change_pitch(board, samples, pitch_change)
     elif pitch_change != 0:
         change_pitch(board, samples, pitch_change)
-    else: 
+    else:
         samples, _ = change_speed(sr, samples, speed_change)
 
-    try:            
-        if lowpass_hz and lowpass_hz < 20000: lowpass(board, samples, lowpass_hz)
+    try:
+        if lowpass_hz and lowpass_hz < 20000:
+            lowpass(board, samples, lowpass_hz)
 
         if reverb_amount and reverb_amount > 0.0:
             reverb(board, samples, reverb_amount)
 
             if samples.size:
                 peak = float(np.max(np.abs(samples)))
-                if peak > 1.0: samples = samples / (peak * 1.06)
+                if peak > 1.0:
+                    samples = samples / (peak * 1.06)
 
-        if gain_db and gain_db != 0 : gain(board, samples, gain_db)
+        if gain_db and gain_db != 0:
+            gain(board, samples, gain_db)
         samples = board(samples, sample_rate=sr)
 
     except Exception as e:
@@ -374,15 +415,18 @@ def process_audio(in_path: str, out_path: str,
 
     try:
         num_channels = 1 if samples.ndim == 1 else samples.shape[1]
-        with AudioFile(out_path, 'w', samplerate=sr, num_channels=num_channels) as g:
+        with AudioFile(out_path, "w", samplerate=sr, num_channels=num_channels) as g:
             g.write(samples.astype(np.float32, copy=False))
 
-        print(f"Processed:\n -Gain: {gain_db}\n-Speed: {speed_change}\n\
+        print(
+            f"Processed:\n -Gain: {gain_db}\n-Speed: {speed_change}\n\
             -Pitch: {pitch_change}\n\
-            -Lowpass: {lowpass_hz}\n -Reverb: {reverb_amount}")
+            -Lowpass: {lowpass_hz}\n -Reverb: {reverb_amount}"
+        )
 
     except Exception:
         print("writing output failed")
+
 
 def collect_active_paths_from_session(request):
     active = []

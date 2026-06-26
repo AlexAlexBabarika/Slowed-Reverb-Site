@@ -16,14 +16,13 @@ def transcode_to_compressed(in_path: str, out_path: str) -> None:
     """
     try:
         (
-            ffmpeg
-            .input(in_path)
+            ffmpeg.input(in_path)
             .output(
                 out_path,
                 acodec=settings.AUDIO_CODEC,
                 audio_bitrate=settings.AUDIO_BITRATE,
                 ac=2,
-                vn=None,            # drop any video/cover stream
+                vn=None,  # drop any video/cover stream
                 loglevel="error",
             )
             .overwrite_output()
