@@ -5,10 +5,12 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from .audio_ingest import IngestError, probe_audio, transcode_to_compressed
+from .http_range import range_file_response
 from .misc import safe_remove
 from .track_store import (
     add_track,
     get_playlist,
+    get_track,
     new_track_id,
     processing_dir,
     remove_track,
@@ -75,3 +77,15 @@ def track_detail(request, track_id):
     request.session.modified = True
     safe_remove(track_audio_path(track_id))
     return JsonResponse({"deleted": track_id})
+
+
+@require_http_methods(["GET"])
+def track_audio(request, track_id):
+    track_id = str(track_id)
+    if get_track(request.session, track_id) is None:
+        return JsonResponse({"error": "not found"}, status=404)
+    return range_file_response(
+        request,
+        track_audio_path(track_id),
+        settings.AUDIO_CONTENT_TYPE,
+    )
