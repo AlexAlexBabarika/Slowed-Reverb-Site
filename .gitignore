@@ -16,3 +16,6 @@ app/__pycache__/
 .mypy_cache/
 
 db.sqlite3
+
+# Runtime audio artifacts (PROCESSING_DIR)
+processing_data/
