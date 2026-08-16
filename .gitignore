@@ -1,23 +1,37 @@
-docs/
-.DS_STORE
+# Operating systems and editors
 .DS_Store
+.idea/
+.vscode/
+*.swp
 
-# Python
+# Python bytecode and environments
 __pycache__/
 *.py[cod]
-.cpython-313.pyc
-app/__pycache__/
-
-# uv / virtualenv
 .venv/
+venv/
 
-# Tooling caches
-.ruff_cache/
+# Python tooling and test output
+.coverage
+.coverage.*
+htmlcov/
 .mypy_cache/
+.pytest_cache/
+.ruff_cache/
 
+# Django runtime files
 db.sqlite3
-
-# Runtime audio artifacts (PROCESSING_DIR)
+db.sqlite3-journal
 processing_data/
+staticfiles/
 
+frontend/node_modules/
+frontend/build/
+frontend/.svelte-kit/
+frontend/coverage/
+
+.env
+.env.*
+!.env.example
 test.sh
+
+docs/
