@@ -1,0 +1,30 @@
+# Build context hygiene — keep the image small and builds reproducible.
+
+# VCS / editor
+.git
+.gitignore
+.DS_Store
+*.md
+docs/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.ruff_cache/
+.mypy_cache/
+
+# Node (frontend deps/build are produced inside the image)
+frontend/node_modules/
+frontend/build/
+frontend/.svelte-kit/
+
+# Local runtime state (recreated on the volume at runtime)
+db.sqlite3
+processing_data/
+staticfiles/
+
+# Local-only tooling
+dev.sh
+test.sh
+interface.jpeg

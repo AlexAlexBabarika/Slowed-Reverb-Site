@@ -1,0 +1,26 @@
+# Production-style single-image deployment.
+#
+#   docker compose up --build      -> http://localhost:8080
+#
+# The image builds the SvelteKit SPA and serves it together with the Django
+# API from one gunicorn process (WhiteNoise serves the static assets).
+services:
+  web:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # Generate your own for a real deployment:
+      #   python -c "import secrets; print(secrets.token_urlsafe(50))"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:-change-me-in-production}"
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      # DB file + audio artifacts live on the named volume below.
+      DJANGO_DB_PATH: "/data/db.sqlite3"
+      PROCESSING_DIR: "/data/processing_data"
+    volumes:
+      - app-data:/data
+    restart: unless-stopped
+
+volumes:
+  app-data:

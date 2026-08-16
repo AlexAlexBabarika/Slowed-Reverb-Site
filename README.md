@@ -18,6 +18,16 @@ Change speed and pitch of your favourite songs in browser. Also apply effects, s
   <li>Press <b>ctrl + c</b> to kill server</li>
 </ol>
 
+<h2>Run with Docker</h2>
+<p>One image builds the SvelteKit frontend and serves it together with the Django API via gunicorn (ffmpeg included — no local install needed).</p>
+<ol>
+  <li>Install Docker</li>
+  <li>Run: <b>docker compose up --build</b></li>
+  <li>Open <a href="http://localhost:8000">http://localhost:8000</a></li>
+  <li>Press <b>ctrl + c</b> to stop</li>
+</ol>
+<p>The SQLite database and processed-audio artifacts persist in the <code>app-data</code> volume. For a real deployment, set <code>DJANGO_SECRET_KEY</code> and <code>DJANGO_ALLOWED_HOSTS</code> (see <code>compose.yaml</code>).</p>
+
 <h2>Development</h2>
 <ul>
   <li>Lint: <b>uv run ruff check .</b> (auto-fix with <b>uv run ruff check --fix .</b>)</li>

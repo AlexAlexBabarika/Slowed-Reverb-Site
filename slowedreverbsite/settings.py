@@ -10,23 +10,39 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    val = os.environ.get(name)
+    if val is None:
+        return default
+    return val.strip().lower() in {"1", "true", "yes", "on"}
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# digaf
-SECRET_KEY = "django-insecure-#xuts=caodm%dq-31)ba6&qhy898dx98chb%nha8m1)r(7xt*9"
+# Override with DJANGO_SECRET_KEY in any real deployment (see compose.yaml).
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-#xuts=caodm%dq-31)ba6&qhy898dx98chb%nha8m1)r(7xt*9",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Defaults to True to preserve the local dev experience; the Docker image sets
+# DJANGO_DEBUG=0.
+DEBUG = _env_bool("DJANGO_DEBUG", True)
 
-ALLOWED_HOSTS = []
+# Comma-separated list, e.g. "example.com,www.example.com". "*" allows all.
+ALLOWED_HOSTS = [
+    h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()
+]
 
 
 # Application definition
@@ -43,6 +59,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Serves static files (Django admin assets + the built SvelteKit SPA)
+    # directly from gunicorn, no separate web server needed.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -77,7 +96,8 @@ WSGI_APPLICATION = "slowedreverbsite.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        # Env-overridable so the DB file can live on a mounted volume in Docker.
+        "NAME": os.environ.get("DJANGO_DB_PATH", str(BASE_DIR / "db.sqlite3")),
     }
 }
 
@@ -118,6 +138,30 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+# Where `collectstatic` gathers Django/admin assets, served by WhiteNoise.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Hashed, compressed asset storage so WhiteNoise can serve with far-future
+# cache headers.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# The compiled SvelteKit SPA (vite build -> adapter-static). WhiteNoise serves
+# everything in here at the site root, e.g. /_app/..., /fonts/..., and
+# index.html for "/". SPA client-side routes fall back to index.html via the
+# catch-all in urls.py. In local dev this directory may not exist (the SPA runs
+# under `vite dev` on :5173 instead) — WhiteNoise tolerates a missing root.
+FRONTEND_BUILD_DIR = Path(
+    os.environ.get("FRONTEND_BUILD_DIR", str(BASE_DIR / "frontend" / "build"))
+)
+if FRONTEND_BUILD_DIR.is_dir():
+    WHITENOISE_ROOT = str(FRONTEND_BUILD_DIR)
+    WHITENOISE_INDEX_FILE = True
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -133,7 +177,7 @@ PROCESSING_DIR = os.environ.get("PROCESSING_DIR", str(BASE_DIR / "processing_dat
 AUDIO_CODEC = os.environ.get("AUDIO_CODEC", "libopus")
 AUDIO_EXT = os.environ.get("AUDIO_EXT", ".ogg")
 AUDIO_CONTENT_TYPE = os.environ.get("AUDIO_CONTENT_TYPE", "audio/ogg")
-AUDIO_BITRATE = os.environ.get("AUDIO_BITRATE", "128k")
+AUDIO_BITRATE = os.environ.get("AUDIO_BITRATE", "320k")
 
 # Reject sources longer than this before transcoding.
 MAX_AUDIO_DURATION_SECONDS = int(os.environ.get("MAX_AUDIO_DURATION_SECONDS", "900"))

@@ -19,3 +19,5 @@ db.sqlite3
 
 # Runtime audio artifacts (PROCESSING_DIR)
 processing_data/
+
+test.sh

@@ -15,7 +15,32 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
 from django.contrib import admin
-from django.urls import include, path
+from django.http import FileResponse, Http404
+from django.urls import include, path, re_path
+from django.views import View
 
-urlpatterns = [path("", include("app.urls")), path("admin/", admin.site.urls)]
+
+class SPAFallbackView(View):
+    """Serve the built SvelteKit index.html for any client-side route.
+
+    WhiteNoise serves the real asset files (/_app/..., /fonts/...) and "/".
+    This handles deep links / refreshes on SPA routes that have no matching
+    file, returning index.html so the client router can take over. Returns 404
+    when the SPA hasn't been built (e.g. local dev where vite serves it).
+    """
+
+    def get(self, request, *args, **kwargs):
+        index = settings.FRONTEND_BUILD_DIR / "index.html"
+        if not index.is_file():
+            raise Http404("Frontend build not found")
+        return FileResponse(index.open("rb"), content_type="text/html")
+
+
+urlpatterns = [
+    path("", include("app.urls")),
+    path("admin/", admin.site.urls),
+    # Catch-all SPA fallback — must stay last so /api and /admin win first.
+    re_path(r"^(?!api/|admin/|static/).*$", SPAFallbackView.as_view()),
+]
