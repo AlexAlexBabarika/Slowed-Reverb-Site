@@ -1,42 +1,89 @@
-![interface](interface.jpeg)
-<h1>Slowed Reverb Site</h1>
-Change speed and pitch of your favourite songs in browser. Also apply effects, such as <b>Reverb</b> (In the future...).
+# Slowed Reverb Site
 
-<h2>To start</h2>
-<ol>
-  <li>Install ffmpeg
-    <ul>
-      <li><b>Mac OS:</b> brew install ffmpeg</li>
-      <li><b>Windows:</b> choco install ffmpeg</li>
-      <li><b>Debian/Ubuntu:</b> sudo apt install ffmpeg</li>
-      <li><b>Arch:</b> pacman -S ffmpeg</li>
-    </ul>
-  </li>
-  <li>Install <a href="https://docs.astral.sh/uv/">uv</a></li>
-  <li>Run: <b>uv sync</b> to install dependencies into a virtual environment</li>
-  <li>Run <b>"uv run python manage.py runserver"</b> to start the server</li>
-  <li>Press <b>ctrl + c</b> to kill server</li>
-</ol>
+![Slowed Reverb Site interface](interface.jpeg)
 
-<h2>Run with Docker</h2>
-<p>One image builds the SvelteKit frontend and serves it together with the Django API via gunicorn (ffmpeg included — no local install needed).</p>
-<ol>
-  <li>Install Docker</li>
-  <li>Run: <b>docker compose up --build</b></li>
-  <li>Open <a href="http://localhost:8000">http://localhost:8000</a></li>
-  <li>Press <b>ctrl + c</b> to stop</li>
-</ol>
-<p>The SQLite database and processed-audio artifacts persist in the <code>app-data</code> volume. For a real deployment, set <code>DJANGO_SECRET_KEY</code> and <code>DJANGO_ALLOWED_HOSTS</code> (see <code>compose.yaml</code>).</p>
+Change the speed and pitch of audio in your browser. The application combines a
+Django API with a SvelteKit frontend and includes the foundations for effects
+such as reverb.
 
-<h2>Development</h2>
-<ul>
-  <li>Lint: <b>uv run ruff check .</b> (auto-fix with <b>uv run ruff check --fix .</b>)</li>
-  <li>Format: <b>uv run ruff format .</b></li>
-  <li>Type check: <b>uv run mypy .</b></li>
-</ul>
+## Run with Docker
 
-<h2>Known issues:</h2>
-<bl>
-  <li>YouTube downloading: sadly, it works bad on Windows specifically. Deleting lines 237-240 in views.py helped me. </li>
-</bl>
+Docker is the quickest way to run the complete application. The image builds
+the SvelteKit frontend and serves it with the Django API through Gunicorn and
+WhiteNoise. FFmpeg is included in the image.
 
+```sh
+docker compose up --build
+```
+
+Open <http://localhost:8080>. Press `Ctrl+C` to stop the application.
+
+The SQLite database and processed audio persist in the `app-data` Docker
+volume. For a production deployment, set `DJANGO_SECRET_KEY` and
+`DJANGO_ALLOWED_HOSTS`; the available settings are documented in
+[`compose.yaml`](compose.yaml).
+
+## Local development
+
+### Prerequisites
+
+- Python 3.13 or later
+- [uv](https://docs.astral.sh/uv/)
+- Node.js 20 or later
+- FFmpeg
+
+Install FFmpeg with the package manager for your platform:
+
+```sh
+# macOS
+brew install ffmpeg
+
+# Debian or Ubuntu
+sudo apt install ffmpeg
+
+# Windows (Chocolatey)
+choco install ffmpeg
+
+# Arch Linux
+sudo pacman -S ffmpeg
+```
+
+Install the backend and frontend dependencies:
+
+```sh
+uv sync
+npm --prefix frontend ci
+```
+
+Start Django and Vite in separate terminals:
+
+```sh
+uv run python manage.py migrate
+uv run python manage.py runserver
+```
+
+```sh
+npm --prefix frontend run dev
+```
+
+Open <http://localhost:5173>. Vite proxies API requests to Django on port
+`8000`.
+
+## Quality checks
+
+```sh
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy .
+uv run python manage.py test
+npm --prefix frontend run check
+npm --prefix frontend test
+```
+
+To apply Python formatting, run `uv run ruff format .`. Ruff can automatically
+fix supported lint violations with `uv run ruff check --fix .`.
+
+## Known issues
+
+YouTube downloads may be less reliable on Windows because of differences in
+the local `yt-dlp` and FFmpeg environment.
