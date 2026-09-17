@@ -2,6 +2,8 @@
   import { onMount, tick } from 'svelte';
   import { addToPlaylist, currentTrack, initializePlaylist, playlist } from '$lib/stores/playlist';
   import { effects } from '$lib/stores/effects';
+  import { appearance, connectPreferences } from '$lib/stores/preferences';
+  import { handleShortcut } from '$lib/keyboard';
   import type { Track } from '$lib/api/tracks';
   import { syncTrack, applyLiveEffects, disposePlayer, playerError } from '$lib/stores/player';
   import EffectsPanel from '../components/EffectsPanel.svelte';
@@ -11,12 +13,13 @@
   import ImportDialog from '../components/ImportDialog.svelte';
   import QueueDialog from '../components/QueueDialog.svelte';
   import ExportPanel from '../components/ExportPanel.svelte';
+  import ShortcutsDialog from '../components/ShortcutsDialog.svelte';
 
-  let appearance = $state<'midnight' | 'cobalt'>('midnight');
   let initialization = $state<'loading' | 'ready' | 'error'>('loading');
   let bootstrap: AbortController | null = null;
   let importOpen = $state(false);
   let queueOpen = $state(false);
+  let shortcutsOpen = $state(false);
 
   async function initialize() {
     bootstrap?.abort();
@@ -52,8 +55,10 @@
   });
 
   onMount(() => {
+    const disconnectPreferences = connectPreferences();
     void initialize();
     return () => {
+      disconnectPreferences();
       bootstrap?.abort();
       disposePlayer();
     };
@@ -66,19 +71,21 @@
     name="description"
     content="Slow down audio, shape the tone, add reverb, and export the result."
   />
-  <meta name="theme-color" content={appearance === 'midnight' ? '#152c4a' : '#2448b4'} />
+  <meta name="theme-color" content={$appearance === 'midnight' ? '#152c4a' : '#2448b4'} />
 </svelte:head>
 
+<svelte:window onkeydown={(event) => handleShortcut(event, () => (shortcutsOpen = true))} />
+
 <a class="skip-link" href="#workspace">Skip to workspace</a>
-<main class="app" class:cobalt={appearance === 'cobalt'}>
+<main class="app" class:cobalt={$appearance === 'cobalt'}>
   <header class="masthead">
     <h1 translate="no">Slowed × Reverb</h1>
     <div class="masthead-actions">
       <button
         class="appearance-btn"
         aria-label="Change appearance"
-        aria-pressed={appearance === 'cobalt'}
-        onclick={() => (appearance = appearance === 'midnight' ? 'cobalt' : 'midnight')}
+        aria-pressed={$appearance === 'cobalt'}
+        onclick={() => appearance.update((value) => value === 'midnight' ? 'cobalt' : 'midnight')}
       >
         <span class="appearance-dot" aria-hidden="true"></span>
         <span class="appearance-label">Appearance</span>
@@ -124,12 +131,17 @@
     {/if}
   </div>
 
+  <footer class="workspace-footer">
+    <button class="text-btn" onclick={() => (shortcutsOpen = true)}>Keyboard shortcuts <kbd>?</kbd></button>
+  </footer>
+
   {#if initialization === 'ready'}
     <CompactPlayer onqueue={() => (queueOpen = true)} />
   {/if}
 </main>
 
 <ImportDialog open={importOpen} onclose={() => (importOpen = false)} onadd={added} />
+<ShortcutsDialog open={shortcutsOpen} onclose={() => (shortcutsOpen = false)} />
 <QueueDialog
   open={queueOpen}
   onclose={() => (queueOpen = false)}

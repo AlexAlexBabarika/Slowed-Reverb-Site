@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { effects, setEffect, resetEffects, EFFECT_RANGES } from '$lib/stores/effects';
+  import { effects, setEffect, resetEffects, EFFECT_RANGES, EFFECT_PRESETS, applyPreset, matchingPreset } from '$lib/stores/effects';
   import Slider from './Slider.svelte';
+
+  const selectedPreset = $derived(matchingPreset($effects));
 
   function semitones(speed: number): string {
     const value = 12 * Math.log2(speed);
@@ -15,6 +17,19 @@
       <p>Changes apply while the track plays.</p>
     </div>
     <button class="text-btn" onclick={resetEffects}>Reset</button>
+  </div>
+
+  <div class="preset-grid" role="group" aria-label="Sound presets">
+    {#each EFFECT_PRESETS as preset}
+      <button
+        class="preset-btn"
+        aria-pressed={selectedPreset === preset.name}
+        onclick={() => applyPreset(preset)}
+      >
+        <strong>{preset.name}</strong>
+        <span>{preset.description}</span>
+      </button>
+    {/each}
   </div>
 
   <div class="effects-primary">

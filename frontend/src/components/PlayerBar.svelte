@@ -18,6 +18,7 @@
   } from '$lib/stores/player';
   import { currentTrack } from '$lib/stores/playlist';
   import { effects } from '$lib/stores/effects';
+  import { shortcutsEnabled } from '$lib/stores/preferences';
 
   let {
     onadd,
@@ -82,20 +83,20 @@
 
     <div class="transport">
       <div class="transport-main" id="main-transport">
-        <button class="transport-btn" aria-label="Previous track" onclick={prev} disabled={!$buffer || $loading}>
+        <button class="transport-btn" aria-label="Previous track" aria-keyshortcuts={$shortcutsEnabled ? 'Shift+ArrowLeft' : undefined} onclick={prev} disabled={!$buffer || $loading}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14M19 6l-10 6 10 6z" /></svg>
         </button>
-        <button class="play-btn" aria-label={$isPlaying ? 'Pause' : 'Play'} onclick={toggle} disabled={!$buffer || $loading}>
+        <button class="play-btn" aria-label={$isPlaying ? 'Pause' : 'Play'} aria-keyshortcuts={$shortcutsEnabled ? 'Space' : undefined} onclick={toggle} disabled={!$buffer || $loading}>
           {#if $isPlaying}
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14M17 5v14" /></svg>
           {:else}
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" /></svg>
           {/if}
         </button>
-        <button class="transport-btn" aria-label="Stop" onclick={stopPlayback} disabled={!$buffer && !$loading}>
+        <button class="transport-btn" aria-label="Stop" aria-keyshortcuts={$shortcutsEnabled ? 'Escape' : undefined} onclick={stopPlayback} disabled={!$buffer && !$loading}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1" /></svg>
         </button>
-        <button class="transport-btn" aria-label="Next track" onclick={next} disabled={!$buffer || $loading}>
+        <button class="transport-btn" aria-label="Next track" aria-keyshortcuts={$shortcutsEnabled ? 'Shift+ArrowRight' : undefined} onclick={next} disabled={!$buffer || $loading}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5v14M5 6l10 6-10 6z" /></svg>
         </button>
       </div>
@@ -103,6 +104,7 @@
         class="repeat-btn"
         class:is-on={$looping}
         aria-label="Repeat current track"
+        aria-keyshortcuts={$shortcutsEnabled ? 'R' : undefined}
         aria-pressed={$looping}
         onclick={toggleLoop}
         disabled={!$buffer || $loading}
