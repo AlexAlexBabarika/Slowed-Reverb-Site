@@ -45,7 +45,7 @@ html {
 }
 
 body {
-  min-width: 320px;
+  min-width: 0;
   min-height: 100svh;
   margin: 0;
   background: var(--midnight);
@@ -1046,7 +1046,7 @@ input[type='range']::-moz-range-thumb {
   }
 
   .masthead h1 {
-    font-size: clamp(20px, 6vw, 23px);
+    font-size: clamp(18px, 5.5vw, 23px);
     white-space: nowrap;
   }
 

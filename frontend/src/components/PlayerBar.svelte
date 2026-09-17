@@ -57,7 +57,7 @@
       </div>
       <div class="track-duration">
         <span>Original duration</span>
-        <strong>{fmt($duration || $currentTrack.duration)}</strong>
+        <strong>{fmt(Math.round($duration || $currentTrack.duration))}</strong>
       </div>
     </div>
 
