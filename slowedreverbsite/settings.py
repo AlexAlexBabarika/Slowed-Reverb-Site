@@ -41,7 +41,9 @@ DEBUG = _env_bool("DJANGO_DEBUG", True)
 
 # Comma-separated list, e.g. "example.com,www.example.com". "*" allows all.
 ALLOWED_HOSTS = [
-    h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()
+    h.strip()
+    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
+    if h.strip()
 ]
 
 
@@ -107,7 +109,9 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": (
+            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+        ),
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
@@ -167,8 +171,6 @@ if FRONTEND_BUILD_DIR.is_dir():
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-import os
-
 # --- Audio ingest / delivery (see docs/01-backend-performance.md) ---
 # Directory holding compressed track artifacts. Overridden by env in docs/03.
 PROCESSING_DIR = os.environ.get("PROCESSING_DIR", str(BASE_DIR / "processing_data"))
@@ -181,6 +183,8 @@ AUDIO_BITRATE = os.environ.get("AUDIO_BITRATE", "320k")
 
 # Reject sources longer than this before transcoding.
 MAX_AUDIO_DURATION_SECONDS = int(os.environ.get("MAX_AUDIO_DURATION_SECONDS", "900"))
+
+YTDLP_COOKIES_FILE = os.environ.get("YTDLP_COOKIES_FILE", "").strip()
 
 # Accepted upload extensions (lowercase, no dot).
 ALLOWED_UPLOAD_EXTS = {"mp3", "wav", "flac", "m4a", "aac", "ogg", "opus"}

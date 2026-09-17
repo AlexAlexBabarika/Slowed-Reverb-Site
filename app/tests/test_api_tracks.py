@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 import tempfile
@@ -43,6 +42,19 @@ class TracksApiTests(TestCase):
     def test_upload_rejects_missing_file(self):
         resp = self.client.post("/api/tracks", {})
         self.assertEqual(resp.status_code, 400)
+
+    def test_upload_returns_a_clear_error_for_invalid_audio(self):
+        upload = SimpleUploadedFile(
+            "broken.wav", b"not audio", content_type="audio/wav"
+        )
+        resp = self.client.post("/api/tracks", {"audio_file": upload})
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(
+            resp.json()["error"],
+            "That file does not contain readable audio. "
+            "Choose another file and try again.",
+        )
 
     def test_list_returns_uploaded_tracks(self):
         self._upload()

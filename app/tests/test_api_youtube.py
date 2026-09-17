@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 
+from app.audio_ingest import IngestError
 from app.tests.support import make_test_audio
 
 
@@ -50,7 +51,8 @@ class YoutubeApiTests(TestCase):
 
     @patch("app.api.download_youtube")
     def test_download_failure_returns_400(self, mock_dl):
-        from app.audio_ingest import IngestError
+        mock_dl.side_effect = IngestError("detail", "Try another YouTube link.")
+        response = self._post({"url": "https://youtu.be/x"})
 
-        mock_dl.side_effect = IngestError("boom")
-        self.assertEqual(self._post({"url": "https://youtu.be/x"}).status_code, 400)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Try another YouTube link.")

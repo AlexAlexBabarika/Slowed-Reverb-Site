@@ -61,7 +61,7 @@ def tracks_collection(request):
         out_meta = probe_audio(out_path)
     except IngestError as exc:
         safe_remove(out_path)
-        return JsonResponse({"error": str(exc)}, status=400)
+        return JsonResponse({"error": exc.public_message}, status=400)
     finally:
         safe_remove(in_path)
 
@@ -122,7 +122,7 @@ def youtube_track(request):
         out_meta = probe_audio(out_path)
     except IngestError as exc:
         safe_remove(out_path)
-        return JsonResponse({"error": str(exc)}, status=400)
+        return JsonResponse({"error": exc.public_message}, status=400)
     finally:
         safe_remove(downloaded)
 

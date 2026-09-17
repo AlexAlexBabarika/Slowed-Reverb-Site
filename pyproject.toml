@@ -9,7 +9,8 @@ dependencies = [
     "ffmpeg-python",
     "gunicorn>=26.0.0",
     "whitenoise>=6.12.0",
-    "yt-dlp",
+    "deno==2.8.1",
+    "yt-dlp[default]==2026.6.9",
 ]
 
 [dependency-groups]
