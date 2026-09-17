@@ -21,6 +21,8 @@ class _RangeReader:
         return self
 
     def __next__(self) -> bytes:
+        if self.file_obj.closed:
+            raise StopIteration
         data = self.file_obj.read(min(8192, self.remaining))
         if not data:
             self.close()
