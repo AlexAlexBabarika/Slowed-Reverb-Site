@@ -1,5 +1,8 @@
+import json
+import math
 import os
 import shutil
+import subprocess
 import tempfile
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -23,8 +26,8 @@ def transcode_to_compressed(in_path: str, out_path: str) -> None:
     Raises IngestError on ffmpeg failure or empty output.
     """
     try:
-        (
-            ffmpeg.input(in_path)
+        command = (
+            ffmpeg.input(in_path, protocol_whitelist="file,pipe")
             .output(
                 out_path,
                 acodec=settings.AUDIO_CODEC,
@@ -34,9 +37,22 @@ def transcode_to_compressed(in_path: str, out_path: str) -> None:
                 loglevel="error",
             )
             .overwrite_output()
-            .run()
+            .compile()
         )
-    except ffmpeg.Error as exc:
+        subprocess.run(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=settings.AUDIO_TRANSCODE_TIMEOUT_SECONDS,
+            check=True,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise IngestError(
+            "transcode timed out",
+            "Audio processing took too long. Try a smaller audio file.",
+        ) from exc
+    except (OSError, subprocess.CalledProcessError) as exc:
         raise IngestError(
             f"transcode failed: {exc}",
             "Could not process this audio file. "
@@ -54,8 +70,31 @@ def transcode_to_compressed(in_path: str, out_path: str) -> None:
 def probe_audio(path: str) -> dict:
     """Return {'duration': float, 'artist': str, 'title': str} via ffprobe."""
     try:
-        info = ffmpeg.probe(path)
-    except ffmpeg.Error as exc:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-protocol_whitelist",
+                "file,pipe",
+                "-show_format",
+                "-show_streams",
+                "-of",
+                "json",
+                path,
+            ],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=settings.AUDIO_PROBE_TIMEOUT_SECONDS,
+            check=True,
+        )
+        info = json.loads(result.stdout)
+    except subprocess.TimeoutExpired as exc:
+        raise IngestError(
+            "probe timed out",
+            "Reading this audio took too long. Try another file.",
+        ) from exc
+    except (OSError, subprocess.CalledProcessError, ValueError) as exc:
         raise IngestError(
             f"probe failed: {exc}",
             "That file does not contain readable audio. "
@@ -70,11 +109,32 @@ def probe_audio(path: str) -> dict:
     except (TypeError, ValueError):
         duration = 0.0
 
+    if not any(
+        stream.get("codec_type") == "audio" for stream in info.get("streams", [])
+    ):
+        raise IngestError("This file has no audio track. Choose an audio file.")
+    if not math.isfinite(duration) or duration <= 0:
+        raise IngestError(
+            "Could not determine the audio duration. Choose another file."
+        )
+
     return {
         "duration": duration,
         "artist": tags.get("artist", ""),
         "title": tags.get("title", ""),
     }
+
+
+def validate_audio_duration(duration: float, tolerance: float = 0) -> None:
+    if duration > settings.MAX_AUDIO_DURATION_SECONDS + tolerance:
+        minutes = settings.MAX_AUDIO_DURATION_SECONDS / 60
+        raise IngestError(f"This audio exceeds the {minutes:g}-minute import limit.")
+
+
+def _check_download_size(progress: dict) -> None:
+    if progress.get("downloaded_bytes", 0) > settings.MAX_AUDIO_UPLOAD_BYTES:
+        limit = settings.MAX_AUDIO_UPLOAD_BYTES / (1024 * 1024)
+        raise IngestError(f"This download exceeds the {limit:g} MiB import limit.")
 
 
 def _validate_youtube_url(url: str) -> None:
@@ -181,6 +241,8 @@ def download_youtube(url: str, dest_base: str) -> tuple[str, dict[str, str]]:
         "extractor_retries": 2,
         "fragment_retries": 2,
         "match_filter": _duration_filter,
+        "max_filesize": settings.MAX_AUDIO_UPLOAD_BYTES,
+        "progress_hooks": [_check_download_size],
         "js_runtimes": {"deno": {}},
     }
     try:

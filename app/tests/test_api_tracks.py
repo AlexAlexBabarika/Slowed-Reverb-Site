@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -82,3 +83,35 @@ class TracksApiTests(TestCase):
         response = self.client.get("/api/tracks")
         self.assertEqual(response.status_code, 200)
         self.assertIn("csrftoken", response.cookies)
+
+    @override_settings(MAX_AUDIO_UPLOAD_BYTES=1024)
+    @patch("app.api.probe_audio")
+    def test_oversized_upload_is_rejected_without_processing(self, probe):
+        upload = SimpleUploadedFile("large.wav", b"x" * 1025)
+
+        response = self.client.post("/api/tracks", {"audio_file": upload})
+
+        self.assertEqual(response.status_code, 413)
+        probe.assert_not_called()
+        self.assertEqual(os.listdir(self.tmp), [])
+
+    @patch("app.api.open", side_effect=OSError("Disk full"))
+    def test_storage_failure_returns_a_retryable_error(self, _open):
+        with self.assertLogs("app.api", level="ERROR"):
+            response = self.client.post(
+                "/api/tracks",
+                {"audio_file": SimpleUploadedFile("song.wav", b"audio")},
+            )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(os.listdir(self.tmp), [])
+
+    @override_settings(MAX_AUDIO_DURATION_SECONDS=1)
+    @patch("app.api.transcode_to_compressed")
+    def test_long_upload_is_rejected_before_transcoding(self, transcode):
+        response = self._upload(seconds=2)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("import limit", response.json()["error"])
+        transcode.assert_not_called()
+        self.assertEqual(os.listdir(self.tmp), ["u.wav"])

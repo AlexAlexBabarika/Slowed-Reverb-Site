@@ -183,6 +183,11 @@ AUDIO_BITRATE = os.environ.get("AUDIO_BITRATE", "320k")
 
 # Reject sources longer than this before transcoding.
 MAX_AUDIO_DURATION_SECONDS = int(os.environ.get("MAX_AUDIO_DURATION_SECONDS", "900"))
+MAX_AUDIO_UPLOAD_BYTES = int(os.environ.get("MAX_AUDIO_UPLOAD_BYTES", "268435456"))
+AUDIO_PROBE_TIMEOUT_SECONDS = int(os.environ.get("AUDIO_PROBE_TIMEOUT_SECONDS", "15"))
+AUDIO_TRANSCODE_TIMEOUT_SECONDS = int(
+    os.environ.get("AUDIO_TRANSCODE_TIMEOUT_SECONDS", "90")
+)
 
 YTDLP_COOKIES_FILE = os.environ.get("YTDLP_COOKIES_FILE", "").strip()
 
