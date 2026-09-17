@@ -7,6 +7,7 @@
     value,
     valueText,
     sub = '',
+    primary = false,
     onchange
   }: {
     label: string;
@@ -16,18 +17,28 @@
     value: number;
     valueText: string;
     sub?: string;
+    primary?: boolean;
     onchange: (value: number) => void;
   } = $props();
 
-  function handle(e: Event) {
-    onchange(Number((e.currentTarget as HTMLInputElement).value));
+  function handle(event: Event) {
+    onchange(Number((event.currentTarget as HTMLInputElement).value));
   }
 </script>
 
-<label class="slider">
-  <span class="slider-row">
-    <span>{label}: {valueText}</span>
-    {#if sub}<span class="sub">{sub}</span>{/if}
+<label class="slider-control" class:primary>
+  <span class="slider-heading">
+    <span>{label}</span>
+    <strong>{valueText}</strong>
   </span>
-  <input type="range" {min} {max} {step} {value} oninput={handle} aria-label={label} />
+  <input
+    type="range"
+    {min}
+    {max}
+    {step}
+    {value}
+    aria-valuetext={valueText}
+    oninput={handle}
+  />
+  {#if sub}<span class="slider-sub">{sub}</span>{/if}
 </label>
