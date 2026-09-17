@@ -26,6 +26,7 @@
 <dialog
   bind:this={dialog}
   class="sheet import-sheet"
+  aria-labelledby="import-heading"
   onclose={onclose}
   onclick={(event) => {
     if (event.currentTarget === event.target) onclose();
@@ -34,20 +35,21 @@
   <div class="sheet-body">
     <div class="section-heading">
       <div>
-        <h2>Add audio</h2>
+        <h2 id="import-heading">Add audio</h2>
         <p>Choose a file or paste a YouTube link.</p>
       </div>
       <button class="icon-btn" aria-label="Close add audio" onclick={onclose}>×</button>
     </div>
     <fieldset class="mode-switch">
       <legend class="visually-hidden">Audio source</legend>
-      <button class:is-active={mode === 'upload'} onclick={() => (mode = 'upload')}>Upload</button>
-      <button class:is-active={mode === 'youtube'} onclick={() => (mode = 'youtube')}>YouTube</button>
+      <button class:is-active={mode === 'upload'} aria-pressed={mode === 'upload'} onclick={() => (mode = 'upload')}>Upload</button>
+      <button class:is-active={mode === 'youtube'} aria-pressed={mode === 'youtube'} onclick={() => (mode = 'youtube')}>YouTube</button>
     </fieldset>
-    {#if mode === 'upload'}
+    <div hidden={mode !== 'upload'}>
       <UploadPanel {onadd} />
-    {:else}
+    </div>
+    <div hidden={mode !== 'youtube'}>
       <YoutubePanel {onadd} />
-    {/if}
+    </div>
   </div>
 </dialog>

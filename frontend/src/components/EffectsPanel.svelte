@@ -26,6 +26,8 @@
       step={0.01}
       value={$effects.speed}
       valueText={`${Math.round($effects.speed * 100)}%`}
+      scale={100}
+      unit="%"
       sub={`Pitch follows speed · ${semitones($effects.speed)}`}
       onchange={(value) => setEffect('speed', value)}
     />
@@ -37,6 +39,8 @@
       step={0.01}
       value={$effects.reverb}
       valueText={`${Math.round($effects.reverb * 100)}%`}
+      scale={100}
+      unit="%"
       sub="Dry / wet mix"
       onchange={(value) => setEffect('reverb', value)}
     />
@@ -55,6 +59,7 @@
         step={10}
         value={$effects.lowpass}
         valueText={`${Math.round($effects.lowpass)} Hz`}
+        unit="Hz"
         onchange={(value) => setEffect('lowpass', value)}
       />
       <Slider
@@ -64,6 +69,7 @@
         step={1}
         value={$effects.gainDb}
         valueText={`${$effects.gainDb.toFixed(0)} dB`}
+        unit="dB"
         onchange={(value) => setEffect('gainDb', value)}
       />
     </div>

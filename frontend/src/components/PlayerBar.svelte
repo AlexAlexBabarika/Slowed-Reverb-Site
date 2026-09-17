@@ -7,7 +7,6 @@
     duration,
     buffer,
     looping,
-    exporting,
     loading,
     stopPlayback,
     toggle,
@@ -15,11 +14,10 @@
     next,
     seekFraction,
     toggleLoop,
-    exportCurrent
+    syncTrack
   } from '$lib/stores/player';
   import { currentTrack } from '$lib/stores/playlist';
   import { effects } from '$lib/stores/effects';
-  import { REVERB_SECONDS } from '$lib/audio/reverb';
 
   let {
     onadd,
@@ -34,11 +32,6 @@
     return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
   }
 
-  let exportDuration = $derived(
-    $buffer
-      ? $duration / $effects.speed + ($effects.reverb > 0 ? REVERB_SECONDS : 0)
-      : 0
-  );
 </script>
 
 <section class="stage" aria-labelledby="track-heading">
@@ -49,6 +42,8 @@
         <p>
           {#if $loading}
             Loading audio…
+          {:else if !$buffer}
+            Audio unavailable
           {:else if $isPlaying}
             <span class="playing-dot" aria-hidden="true"></span> Playing at {Math.round($effects.speed * 100)}% speed
           {:else if $progress === 1}
@@ -81,7 +76,11 @@
       <span>{fmt(Math.round($duration))}</span>
     </div>
 
-    <div class="transport">
+    {#if !$loading && !$buffer}
+      <button class="btn btn-primary retry-track" onclick={() => syncTrack($currentTrack)}>Retry loading audio</button>
+    {/if}
+
+    <div class="transport" id="main-transport">
       <div class="transport-main">
         <button class="transport-btn" aria-label="Previous track" onclick={prev} disabled={!$buffer || $loading}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14M19 6l-10 6 10 6z" /></svg>
@@ -103,6 +102,7 @@
       <button
         class="repeat-btn"
         class:is-on={$looping}
+        aria-label="Repeat current track"
         aria-pressed={$looping}
         onclick={toggleLoop}
         disabled={!$buffer || $loading}
@@ -126,20 +126,3 @@
     </div>
   {/if}
 </section>
-
-{#if $currentTrack}
-  <section class="export-panel" aria-labelledby="export-heading">
-    <div>
-      <span class="export-label">Your export</span>
-      <h2 id="export-heading">{exportDuration ? `About ${fmt(Math.ceil(exportDuration))}` : 'Ready when audio loads'}</h2>
-      <p>{Math.round($effects.speed * 100)}% speed{#if $effects.reverb > 0}, including reverb tail{/if}</p>
-    </div>
-    <button
-      class="btn btn-accent"
-      onclick={exportCurrent}
-      disabled={!$buffer || $loading || $exporting}
-    >
-      {$exporting ? 'Rendering WAV…' : 'Download WAV'}
-    </button>
-  </section>
-{/if}

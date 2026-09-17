@@ -4,6 +4,7 @@
   let { onadd }: { onadd: (track: Track) => void } = $props();
   let busy = $state(false);
   let error = $state('');
+  let added = $state(0);
   let fileInput: HTMLInputElement;
 
   async function pick(event: Event) {
@@ -12,8 +13,12 @@
     if (!files.length) return;
     busy = true;
     error = '';
+    added = 0;
     try {
-      for (const file of files) onadd(await uploadTrack(file));
+      for (const file of files) {
+        onadd(await uploadTrack(file));
+        added += 1;
+      }
     } catch (cause) {
       error = cause instanceof ApiError ? cause.message : 'Upload failed. Choose the file and try again.';
     } finally {
@@ -43,5 +48,6 @@
   <button class="btn btn-primary" onclick={() => fileInput.click()} disabled={busy}>
     {busy ? 'Uploading audio…' : 'Choose audio files'}
   </button>
+  {#if added}<p role="status">{added} {added === 1 ? 'track' : 'tracks'} added to your queue.</p>{/if}
   {#if error}<p class="error-message" role="alert">{error}</p>{/if}
 </div>

@@ -10,6 +10,7 @@
   import CompactPlayer from '../components/CompactPlayer.svelte';
   import ImportDialog from '../components/ImportDialog.svelte';
   import QueueDialog from '../components/QueueDialog.svelte';
+  import ExportPanel from '../components/ExportPanel.svelte';
 
   let appearance = $state<'midnight' | 'cobalt'>('midnight');
   let initialization = $state<'loading' | 'ready' | 'error'>('loading');
@@ -75,8 +76,8 @@
         <span class="appearance-dot" aria-hidden="true"></span>
         <span class="appearance-label">Appearance</span>
       </button>
-      <button class="btn btn-ice" onclick={() => (importOpen = true)} disabled={initialization !== 'ready'}>
-        <span aria-hidden="true">+</span> Add audio
+      <button class="btn btn-ice" aria-label="Add audio" onclick={() => (importOpen = true)} disabled={initialization !== 'ready'}>
+        <span aria-hidden="true">+</span> <span class="add-label">Add audio</span>
       </button>
     </div>
   </header>
@@ -89,17 +90,16 @@
         <p>The listening room will be ready in a moment.</p>
       </section>
     {:else if initialization === 'error'}
-      <section class="stage status-stage">
+      <section class="stage status-stage" role="alert">
         <h2>Could not load your tracks</h2>
         <p>Check the connection and retry to import or play audio.</p>
         <button class="btn btn-primary" onclick={initialize}>Retry</button>
       </section>
     {:else}
-      <div class="primary-column">
-        <PlayerBar onadd={() => (importOpen = true)} onqueue={() => (queueOpen = true)} />
-        <EffectsPanel />
-        {#if $playerError}<p class="error-message" role="alert">{$playerError}</p>{/if}
-      </div>
+      <PlayerBar onadd={() => (importOpen = true)} onqueue={() => (queueOpen = true)} />
+      <EffectsPanel />
+      <ExportPanel />
+      {#if $playerError}<p class="error-message player-error" role="alert">{$playerError}</p>{/if}
 
       <aside class="queue-panel" aria-labelledby="queue-heading">
         <div class="section-heading">

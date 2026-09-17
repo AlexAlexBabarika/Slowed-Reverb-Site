@@ -24,6 +24,7 @@
 <dialog
   bind:this={dialog}
   class="sheet queue-sheet"
+  aria-labelledby="queue-dialog-heading"
   onclose={onclose}
   onclick={(event) => {
     if (event.currentTarget === event.target) onclose();
@@ -32,7 +33,7 @@
   <div class="sheet-body">
     <div class="section-heading">
       <div>
-        <h2>Queue</h2>
+        <h2 id="queue-dialog-heading">Queue</h2>
         <p>{$playlist.length} {$playlist.length === 1 ? 'track' : 'tracks'}</p>
       </div>
       <button class="icon-btn" aria-label="Close queue" onclick={onclose}>×</button>

@@ -1,19 +1,29 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { tick } from 'svelte';
   import { currentTrack } from '$lib/stores/playlist';
   import { buffer, isPlaying, loading, stopPlayback, toggle } from '$lib/stores/player';
 
   let { onqueue }: { onqueue: () => void } = $props();
   let visible = $state(false);
 
-  onMount(() => {
-    const transport = document.querySelector('.transport');
-    if (!transport) return;
+  $effect(() => {
+    if (!$currentTrack) {
+      visible = false;
+      return;
+    }
+    let cancelled = false;
     const observer = new IntersectionObserver(([entry]) => {
       visible = !entry.isIntersecting;
     });
-    observer.observe(transport);
-    return () => observer.disconnect();
+    void tick().then(() => {
+      if (cancelled) return;
+      const transport = document.getElementById('main-transport');
+      if (transport) observer.observe(transport);
+    });
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
   });
 </script>
 

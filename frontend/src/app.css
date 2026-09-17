@@ -241,18 +241,13 @@ h3 {
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(270px, 1fr);
+  grid-template-areas: 'stage queue' 'effects export' 'error error';
   gap: clamp(22px, 3vw, 40px);
   align-items: stretch;
 }
 
-.primary-column {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
-
 .stage {
+  grid-area: stage;
   min-width: 0;
   min-height: 410px;
   padding: clamp(24px, 3vw, 38px);
@@ -499,10 +494,13 @@ h3 {
 }
 
 .export-panel {
+  grid-area: export;
+  align-self: start;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: space-between;
-  gap: 24px;
+  gap: 18px;
   padding: 22px 24px;
   color: var(--ice);
   background: var(--midnight-raised);
@@ -526,7 +524,22 @@ h3 {
   font-size: 13px;
 }
 
+.export-note {
+  color: var(--fog);
+  text-align: center;
+  font-size: 12px;
+}
+
+.player-error {
+  grid-area: error;
+}
+
+.retry-track {
+  margin-top: 16px;
+}
+
 .effects-panel {
+  grid-area: effects;
   padding: 4px 4px 0;
 }
 
@@ -585,12 +598,36 @@ h3 {
   color: var(--ice);
 }
 
-.slider-heading strong {
-  font-size: 17px;
-  font-variant-numeric: tabular-nums;
+.value-editor {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-weight: 700;
 }
 
-.slider-control.primary .slider-heading strong {
+.value-editor input {
+  width: 6ch;
+  padding: 1px 0;
+  border: 0;
+  border-bottom: 1px solid var(--slate);
+  border-radius: 0;
+  color: var(--ice);
+  background: transparent;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.value-editor input::-webkit-inner-spin-button,
+.value-editor input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.slider-control.primary .value-editor input {
+  width: 3.3ch;
   font-size: clamp(30px, 3.5vw, 44px);
   line-height: 1;
   letter-spacing: -0.045em;
@@ -606,8 +643,8 @@ h3 {
 
 input[type='range'] {
   width: 100%;
-  height: 32px;
-  margin: 10px 0 0;
+  height: 44px;
+  margin: 4px 0 0;
   appearance: none;
   background: transparent;
   cursor: pointer;
@@ -679,8 +716,10 @@ input[type='range']::-moz-range-thumb {
 }
 
 .queue-panel {
+  grid-area: queue;
   min-width: 0;
-  min-height: 680px;
+  min-height: 0;
+  max-height: 460px;
   display: flex;
   flex-direction: column;
 }
@@ -811,7 +850,7 @@ input[type='range']::-moz-range-thumb {
 }
 
 .track-del {
-  width: 40px;
+  width: 44px;
   height: 44px;
   flex: none;
   border: 0;
@@ -978,14 +1017,16 @@ input[type='range']::-moz-range-thumb {
 @media (max-width: 900px) {
   .workspace {
     grid-template-columns: 1fr;
+    grid-template-areas: 'stage' 'effects' 'export' 'error';
   }
 
   .queue-panel {
-    min-height: 0;
+    display: none;
   }
 
-  .queue-panel .playlist-scroll {
-    max-height: 380px;
+  .queue-mobile-btn {
+    display: inline-flex;
+    align-items: center;
   }
 }
 
@@ -1028,10 +1069,6 @@ input[type='range']::-moz-range-thumb {
     gap: 24px;
   }
 
-  .primary-column {
-    gap: 22px;
-  }
-
   .stage {
     min-height: 0;
     padding: 22px 20px;
@@ -1069,13 +1106,13 @@ input[type='range']::-moz-range-thumb {
   }
 
   .transport-btn {
-    width: 42px;
+    width: 44px;
     height: 46px;
   }
 
   .play-btn {
     width: 64px;
-    height: 54px;
+    height: 56px;
   }
 
   .repeat-btn {
@@ -1194,8 +1231,14 @@ input[type='range']::-moz-range-thumb {
     gap: 2px;
   }
 
-  .appearance-btn {
+  .add-label {
     display: none;
+  }
+
+  .masthead .btn-ice {
+    min-width: 44px;
+    padding-inline: 12px;
+    font-size: 24px;
   }
 
   .track-heading p {

@@ -5,13 +5,17 @@
   let url = $state('');
   let busy = $state(false);
   let error = $state('');
+  let added = $state('');
 
   async function submit() {
     if (!url.trim() || busy) return;
     busy = true;
     error = '';
+    added = '';
     try {
-      onadd(await addYoutube(url.trim()));
+      const track = await addYoutube(url.trim());
+      onadd(track);
+      added = track.filename;
       url = '';
     } catch (cause) {
       error = cause instanceof ApiError ? cause.message : 'Could not add that link. Check it and try again.';
@@ -41,5 +45,6 @@
   <button class="btn btn-primary" type="submit" disabled={busy || !url.trim()}>
     {busy ? 'Adding from YouTube…' : 'Add from YouTube'}
   </button>
+  {#if added}<p role="status">Added “{added}” to your queue.</p>{/if}
   {#if error}<p class="error-message" role="alert">{error}</p>{/if}
 </form>
