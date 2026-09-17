@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
-  import { addToPlaylist, currentTrack } from '$lib/stores/playlist';
+  import { onMount } from 'svelte';
+  import { addToPlaylist, currentTrack, initializePlaylist } from '$lib/stores/playlist';
   import { effects } from '$lib/stores/effects';
   import type { Track } from '$lib/api/tracks';
   import { syncTrack, applyLiveEffects, disposePlayer, playerError } from '$lib/stores/player';
@@ -11,6 +11,21 @@
   import PlayerBar from '../components/PlayerBar.svelte';
 
   let background = $state<'synthwave' | 'dark'>('synthwave');
+  let initialization = $state<'loading' | 'ready' | 'error'>('loading');
+  let bootstrap: AbortController | null = null;
+
+  async function initialize() {
+    bootstrap?.abort();
+    const controller = new AbortController();
+    bootstrap = controller;
+    initialization = 'loading';
+    try {
+      await initializePlaylist(controller.signal);
+      initialization = 'ready';
+    } catch {
+      if (!controller.signal.aborted) initialization = 'error';
+    }
+  }
 
   function added(t: Track) {
     addToPlaylist(t);
@@ -28,7 +43,13 @@
     applyLiveEffects();
   });
 
-  onDestroy(disposePlayer);
+  onMount(() => {
+    void initialize();
+    return () => {
+      bootstrap?.abort();
+      disposePlayer();
+    };
+  });
 </script>
 
 <svelte:head>
@@ -63,10 +84,17 @@
 
       <section class="card playlist-card">
         <div class="card-title">Playlist 📼</div>
-        <Playlist />
-        {#if $playerError}<p class="err">{$playerError}</p>{/if}
-        <YoutubePanel onadd={added} />
-        <UploadPanel onadd={added} />
+        {#if initialization === 'ready'}
+          <Playlist />
+          <YoutubePanel onadd={added} />
+          <UploadPanel onadd={added} />
+        {:else if initialization === 'error'}
+          <p class="err" role="alert">Could not initialize your playlist. Retry to enable imports.</p>
+          <button class="btn" onclick={initialize}>Retry</button>
+        {:else}
+          <p role="status">Loading your playlist…</p>
+        {/if}
+        {#if $playerError}<p class="err" role="alert">{$playerError}</p>{/if}
       </section>
     </div>
 

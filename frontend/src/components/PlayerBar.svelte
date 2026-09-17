@@ -8,6 +8,8 @@
     buffer,
     looping,
     exporting,
+    loading,
+    stopPlayback,
     toggle,
     prev,
     next,
@@ -24,13 +26,16 @@
 
 <div class="player">
   <div class="player-inner">
-    <button class="t-btn" aria-label="Previous track" onclick={prev} disabled={!$buffer}>⏮</button>
-    <button class="t-btn" aria-label={$isPlaying ? 'Pause' : 'Play'} onclick={toggle} disabled={!$buffer}>
+    <button class="t-btn" aria-label="Previous track" onclick={prev} disabled={!$buffer || $loading}>⏮</button>
+    <button class="t-btn" aria-label={$isPlaying ? 'Pause' : 'Play'} onclick={toggle} disabled={!$buffer || $loading}>
       {$isPlaying ? '⏸' : '▶'}
     </button>
-    <button class="t-btn" aria-label="Next track" onclick={next} disabled={!$buffer}>⏭</button>
+    <button class="t-btn" aria-label="Stop" onclick={stopPlayback} disabled={!$buffer && !$loading}>■</button>
+    <button class="t-btn" aria-label="Next track" onclick={next} disabled={!$buffer || $loading}>⏭</button>
 
-    <span class="t-time">{fmt($currentTime)} / {fmt($duration)}</span>
+    <span class="t-time">
+      {#if $loading}Loading…{:else}{fmt($currentTime)} / {fmt($duration)}{/if}
+    </span>
 
     <div class="t-wave">
       <Waveform buffer={$buffer} progress={$progress} height={46} onseek={seekFraction} />
@@ -39,17 +44,17 @@
     <button
       class="t-btn"
       class:is-on={$looping}
-      aria-label="Loop"
+      aria-label="Repeat current track"
       aria-pressed={$looping}
       onclick={toggleLoop}
-      disabled={!$buffer}>↺</button
+      disabled={!$buffer || $loading}>↺</button
     >
     <button
       class="t-btn"
       aria-label="Download processed track"
       title="Download (slowed + reverb)"
       onclick={exportCurrent}
-      disabled={!$buffer || $exporting}>{$exporting ? '…' : '⬇'}</button
+      disabled={!$buffer || $loading || $exporting}>{$exporting ? '…' : '⬇'}</button
     >
   </div>
 </div>
