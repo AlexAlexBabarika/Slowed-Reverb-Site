@@ -80,8 +80,8 @@
       <button class="btn btn-primary retry-track" onclick={() => syncTrack($currentTrack)}>Retry loading audio</button>
     {/if}
 
-    <div class="transport" id="main-transport">
-      <div class="transport-main">
+    <div class="transport">
+      <div class="transport-main" id="main-transport">
         <button class="transport-btn" aria-label="Previous track" onclick={prev} disabled={!$buffer || $loading}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14M19 6l-10 6 10 6z" /></svg>
         </button>

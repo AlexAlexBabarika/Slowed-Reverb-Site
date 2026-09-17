@@ -13,8 +13,8 @@
     }
     let cancelled = false;
     const observer = new IntersectionObserver(([entry]) => {
-      visible = !entry.isIntersecting;
-    });
+      visible = entry.intersectionRatio < 1;
+    }, { threshold: 1 });
     void tick().then(() => {
       if (cancelled) return;
       const transport = document.getElementById('main-transport');

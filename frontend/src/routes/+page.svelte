@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { addToPlaylist, currentTrack, initializePlaylist, playlist } from '$lib/stores/playlist';
   import { effects } from '$lib/stores/effects';
   import type { Track } from '$lib/api/tracks';
@@ -33,6 +33,13 @@
 
   function added(track: Track) {
     addToPlaylist(track);
+  }
+
+  async function importFromQueue() {
+    queueOpen = false;
+    await tick();
+    document.getElementById('add-audio')?.focus();
+    importOpen = true;
   }
 
   $effect(() => {
@@ -76,7 +83,7 @@
         <span class="appearance-dot" aria-hidden="true"></span>
         <span class="appearance-label">Appearance</span>
       </button>
-      <button class="btn btn-ice" aria-label="Add audio" onclick={() => (importOpen = true)} disabled={initialization !== 'ready'}>
+      <button id="add-audio" class="btn btn-ice" aria-label="Add audio" onclick={() => (importOpen = true)} disabled={initialization !== 'ready'}>
         <span aria-hidden="true">+</span> <span class="add-label">Add audio</span>
       </button>
     </div>
@@ -126,8 +133,5 @@
 <QueueDialog
   open={queueOpen}
   onclose={() => (queueOpen = false)}
-  onadd={() => {
-    queueOpen = false;
-    importOpen = true;
-  }}
+  onadd={importFromQueue}
 />

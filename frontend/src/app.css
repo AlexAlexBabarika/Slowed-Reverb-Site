@@ -1031,6 +1031,10 @@ input[type='range']::-moz-range-thumb {
 }
 
 @media (max-width: 700px) {
+  html {
+    scroll-padding-bottom: calc(106px + env(safe-area-inset-bottom));
+  }
+
   .app {
     padding: 12px 16px calc(106px + env(safe-area-inset-bottom));
   }
