@@ -55,6 +55,73 @@ uv sync
 npm --prefix frontend ci
 ```
 
+### One-command launcher
+
+Install a `slowed` command for this checkout:
+
+```sh
+uv run python -m slowedreverbsite.launcher install
+```
+
+If the installer says the command directory is not on `PATH`, add the printed
+directory and open a new terminal. Then start the complete development app:
+
+```sh
+slowed xreverb
+```
+
+The launcher installs missing frontend packages, applies database migrations,
+starts Django and Vite, waits for both to become ready, and opens the page.
+Press `Ctrl+C` once to stop both servers cleanly.
+
+To run without installing the command:
+
+```sh
+uv run python -m slowedreverbsite.launcher xreverb
+```
+
+Use `--no-browser` for a headless terminal. The installed command points to
+this checkout; rerun the installer if you move the repository.
+
+Use custom ports when the defaults are occupied:
+
+```sh
+slowed xreverb --backend-port 8010 --frontend-port 5180
+```
+
+The two-terminal workflow remains available for debugging each server
+independently.
+
+### YouTube imports
+
+The Python environment includes pinned versions of yt-dlp, its supported Deno
+runtime, and its challenge solver. Install the project's locked versions with:
+
+```sh
+uv sync
+```
+
+Public YouTube links work without account access when YouTube permits it. For a
+video that requires sign-in, export a Netscape-format `cookies.txt` from a
+private YouTube session and point the app to it before starting:
+
+```sh
+export YTDLP_COOKIES_FILE="$HOME/.config/slowed-reverb/youtube-cookies.txt"
+slowed xreverb
+```
+
+Treat that file like a password and never commit it. The app does not inspect
+browser profiles or extract cookies automatically. If YouTube rejects the
+session, export a fresh file and restart the app. yt-dlp's documentation
+explains the recommended private-session export process:
+https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies
+
+YouTube can still require sign-in or rate-limit requests regardless of the
+downloader. The app reports these cases separately and does not repeatedly
+switch downloaders against the same restriction.
+
+### Run the servers separately
+
 Start Django and Vite in separate terminals:
 
 ```sh
@@ -82,8 +149,3 @@ npm --prefix frontend test
 
 To apply Python formatting, run `uv run ruff format .`. Ruff can automatically
 fix supported lint violations with `uv run ruff check --fix .`.
-
-## Known issues
-
-YouTube downloads may be less reliable on Windows because of differences in
-the local `yt-dlp` and FFmpeg environment.
