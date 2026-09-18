@@ -585,6 +585,115 @@ h3 {
   gap: clamp(32px, 6vw, 72px);
 }
 
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.preset-btn {
+  min-height: 64px;
+  padding: 12px;
+  border: 1px solid var(--slate);
+  border-radius: 10px;
+  color: var(--ice);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.preset-btn strong,
+.preset-btn span {
+  display: block;
+}
+
+.preset-btn strong {
+  font-size: 14px;
+}
+
+.preset-btn span {
+  margin-top: 5px;
+  color: var(--fog);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.preset-btn:hover {
+  background: var(--midnight-raised);
+}
+
+.preset-btn[aria-pressed='true'] {
+  color: var(--midnight);
+  background: var(--ice);
+  border-color: var(--ice);
+}
+
+.preset-btn[aria-pressed='true'] span {
+  color: var(--slate);
+}
+
+.workspace-footer {
+  width: min(var(--content), 100%);
+  margin: 24px auto 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+kbd {
+  display: inline-block;
+  padding: 4px 7px;
+  border: 1px solid var(--slate);
+  border-radius: 5px;
+  color: var(--ice);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.workspace-footer kbd {
+  margin-left: 8px;
+}
+
+.shortcuts-note {
+  color: var(--fog);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.shortcut-list {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.shortcut-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.shortcut-list dd {
+  margin: 0;
+}
+
+.shortcut-setting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  color: var(--fog);
+  font-size: 14px;
+}
+
+.shortcut-setting input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--apricot);
+}
+
 .slider-control {
   min-width: 0;
   display: block;
@@ -1150,6 +1259,10 @@ input[type='range']::-moz-range-thumb {
   .secondary-grid {
     grid-template-columns: 1fr;
     gap: 30px;
+  }
+
+  .preset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .secondary-values {
