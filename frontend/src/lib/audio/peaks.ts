@@ -1,3 +1,16 @@
+const cachedPeaks = new WeakMap<AudioBuffer, {
+  buckets: number;
+  peaks: { min: number; max: number }[];
+}>();
+
+export function bufferPeaks(buffer: AudioBuffer, buckets: number): { min: number; max: number }[] {
+  const cached = cachedPeaks.get(buffer);
+  if (cached?.buckets === buckets) return cached.peaks;
+  const peaks = computePeaks(buffer.getChannelData(0), buckets);
+  cachedPeaks.set(buffer, { buckets, peaks });
+  return peaks;
+}
+
 export function computePeaks(
   channel: Float32Array,
   buckets: number

@@ -19,6 +19,7 @@ export class FakeParam {
   constructor(v: number) { this.value = v; }
   setValueAtTime(v: number) { this.value = v; }
   linearRampToValueAtTime(v: number) { this.value = v; }
+  cancelScheduledValues(_time: number) {}
 }
 
 export class FakeNode {

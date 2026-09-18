@@ -39,8 +39,8 @@ async function parseOrThrow<T>(res: Response): Promise<T> {
   throw new ApiError(message, res.status);
 }
 
-export async function listTracks(): Promise<Track[]> {
-  const res = await fetch('/api/tracks', { credentials: 'same-origin' });
+export async function listTracks(signal?: AbortSignal): Promise<Track[]> {
+  const res = await fetch('/api/tracks', { credentials: 'same-origin', signal });
   const data = await parseOrThrow<{ tracks: Track[] }>(res);
   return data.tracks;
 }

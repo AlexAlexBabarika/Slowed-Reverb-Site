@@ -12,8 +12,12 @@ let ctx: AudioContext | null = null;
 let engine: AudioEngine | null = null;
 let raf = 0;
 let loadedId: string | null = null;
-let wantPlay = false;
-let wasPlaying = false;
+let loadGeneration = 0;
+let pendingLoad: AbortController | null = null;
+let loadingId: string | null = null;
+let wantPlayId: string | null = null;
+let playGeneration = 0;
+let exportGeneration = 0;
 
 export const isPlaying = writable(false);
 export const progress = writable(0); // 0..1
@@ -27,7 +31,10 @@ export const playerError = writable('');
 
 function ensureEngine(): AudioEngine {
   if (!ctx) ctx = new AudioContext();
-  if (!engine) engine = new AudioEngine(ctx);
+  if (!engine) {
+    engine = new AudioEngine(ctx);
+    engine.onended = onEnded;
+  }
   return engine;
 }
 
@@ -36,82 +43,124 @@ function startTick(): void {
 }
 
 function tick(): void {
-  const playing = !!engine?.isPlaying;
-  if (engine && playing) {
-    const d = engine.duration;
-    currentTime.set(engine.currentTime);
-    duration.set(d);
-    progress.set(d ? Math.min(1, engine.currentTime / d) : 0);
-  }
-  // Detect a natural end: the engine auto-pauses (playing flips true→false) at
-  // a position at/after the buffer duration.
-  if (wasPlaying && !playing && engine) {
-    const d = engine.duration;
-    if (d && engine.currentTime >= d - 0.06) {
-      isPlaying.set(false);
-      onEnded();
-    } else {
-      isPlaying.set(false);
-    }
-  }
-  wasPlaying = playing;
-  raf = requestAnimationFrame(tick);
+  raf = 0;
+  if (!engine?.isPlaying) return;
+  publishPosition();
+  startTick();
+}
+
+function publishPosition(): void {
+  if (!engine) return;
+  const d = engine.duration;
+  const t = engine.currentTime;
+  duration.set(d);
+  currentTime.set(t);
+  progress.set(d ? Math.min(1, t / d) : 0);
+}
+
+function resetPosition(): void {
+  cancelAnimationFrame(raf);
+  raf = 0;
+  isPlaying.set(false);
+  currentTime.set(0);
+  progress.set(0);
+  duration.set(0);
 }
 
 function onEnded(): void {
+  if (!ready()) return;
+  publishPosition();
+  isPlaying.set(false);
+  cancelAnimationFrame(raf);
+  raf = 0;
   if (get(looping)) {
-    progress.set(0);
-    currentTime.set(0);
-    engine?.seek(0);
-    engine?.play(0);
-    isPlaying.set(true);
-  } else {
-    wantPlay = true;
-    next();
+    startPlayback();
+    return;
   }
+  const list = get(playlist);
+  const index = list.findIndex((t) => t.id === loadedId);
+  const nextTrack = list[index + 1];
+  if (index >= 0 && nextTrack) playTrack(nextTrack.id);
 }
 
-function startPlayback(): void {
+function ready(): boolean {
+  return !!engine && !!get(buffer) && !get(loading) && loadedId === get(currentId);
+}
+
+function startPlayback(from = 0): void {
+  if (!ready()) return;
   const e = ensureEngine();
+  const generation = ++playGeneration;
+  playerError.set('');
   e.applyEffects(get(effects));
-  e.play(0);
-  isPlaying.set(true);
+  try {
+    void e.play(from).catch(() => playbackFailed(generation));
+  } catch {
+    playbackFailed(generation);
+    return;
+  }
+  isPlaying.set(e.isPlaying);
+  publishPosition();
   startTick();
-  wantPlay = false;
+  wantPlayId = null;
+}
+
+function playbackFailed(generation: number): void {
+  if (generation !== playGeneration) return;
+  engine?.pause();
+  isPlaying.set(false);
+  playerError.set('Could not start playback. Press Play to try again.');
 }
 
 /** Load (decode) the given track; play it if a play was requested. */
 export async function syncTrack(track: Track | null): Promise<void> {
+  if (track && track.id === loadedId) {
+    if (wantPlayId === track.id) startPlayback();
+    return;
+  }
+  if (track && track.id === loadingId) return;
   playerError.set('');
-  if (!track) {
-    engine?.pause();
-    isPlaying.set(false);
-    buffer.set(null);
-    duration.set(0);
-    loadedId = null;
-    return;
-  }
-  if (track.id === loadedId) {
-    if (wantPlay) startPlayback();
-    return;
-  }
-  const e = ensureEngine();
-  e.pause();
-  isPlaying.set(false);
+  const generation = ++loadGeneration;
+  playGeneration++;
+  pendingLoad?.abort();
+  pendingLoad = null;
+  loadingId = null;
+  loadedId = null;
+  if (wantPlayId !== track?.id) wantPlayId = null;
+  engine?.setBuffer(null);
+  buffer.set(null);
+  resetPosition();
+  loading.set(false);
+
+  if (!track) return;
   loading.set(true);
+  loadingId = track.id;
+  const controller = new AbortController();
+  pendingLoad = controller;
   try {
-    await e.load(track.url);
+    const e = ensureEngine();
+    const decoded = await e.decode(track.url, controller.signal);
+    if (generation !== loadGeneration || track.id !== get(currentId)) return;
+    e.setBuffer(decoded);
     e.applyEffects(get(effects));
     buffer.set(e.decoded);
     duration.set(e.duration);
-    progress.set(0);
-    currentTime.set(0);
     loadedId = track.id;
-    if (wantPlay) startPlayback();
+    loading.set(false);
+    if (wantPlayId === track.id) startPlayback();
   } catch {
+    if (generation !== loadGeneration) return;
+    wantPlayId = null;
+    loadedId = null;
+    buffer.set(null);
+    resetPosition();
     playerError.set('Could not load this track.');
   } finally {
-    loading.set(false);
+    if (generation === loadGeneration) {
+      pendingLoad = null;
+      loadingId = null;
+      loading.set(false);
+    }
   }
 }
 
@@ -122,32 +171,41 @@ export function applyLiveEffects(): void {
 
 /** Select a track and start playing it (from a user gesture). */
 export function playTrack(id: string): void {
-  wantPlay = true;
-  if (id === get(currentId)) {
-    syncTrack(get(playlist).find((t) => t.id === id) ?? null);
-  } else {
-    setCurrent(id);
+  const track = get(playlist).find((t) => t.id === id);
+  if (!track) return;
+  wantPlayId = id;
+  try {
+    void ensureEngine().resume().catch(() => {});
+  } catch {
+    playerError.set('Audio playback is unavailable in this browser.');
+    wantPlayId = null;
+    return;
   }
+  setCurrent(id);
+  void syncTrack(track);
 }
 
 export function toggle(): void {
+  if (!ready()) return;
   const e = ensureEngine();
   if (e.isPlaying) {
+    playGeneration++;
+    wantPlayId = null;
     e.pause();
     isPlaying.set(false);
+    publishPosition();
   } else {
-    if (!get(buffer)) return;
-    e.play();
-    isPlaying.set(true);
-    startTick();
+    startPlayback(e.currentTime);
   }
 }
 
 export function seekFraction(fraction: number): void {
+  if (!ready() || !Number.isFinite(fraction)) return;
   const d = get(duration);
-  engine?.seek(fraction * d);
-  progress.set(fraction);
-  currentTime.set(fraction * d);
+  const generation = ++playGeneration;
+  void engine?.seek(fraction * d).catch(() => playbackFailed(generation));
+  isPlaying.set(!!engine?.isPlaying);
+  publishPosition();
 }
 
 function neighborId(delta: number): string | null {
@@ -158,20 +216,19 @@ function neighborId(delta: number): string | null {
   return list[ni].id;
 }
 
+function skip(delta: number): void {
+  if (!ready()) return;
+  const id = neighborId(delta);
+  if (!id) return;
+  playTrack(id);
+}
+
 export function next(): void {
-  const id = neighborId(1);
-  if (id) {
-    wantPlay = true;
-    setCurrent(id);
-  }
+  skip(1);
 }
 
 export function prev(): void {
-  const id = neighborId(-1);
-  if (id) {
-    wantPlay = true;
-    setCurrent(id);
-  }
+  skip(-1);
 }
 
 export function toggleLoop(): void {
@@ -181,7 +238,8 @@ export function toggleLoop(): void {
 export async function exportCurrent(): Promise<void> {
   const buf = get(buffer);
   const track = get(playlist).find((t) => t.id === get(currentId));
-  if (!buf || !track) return;
+  if (!ready() || !buf || !track || get(exporting)) return;
+  const generation = ++exportGeneration;
   exporting.set(true);
   playerError.set('');
   try {
@@ -190,6 +248,7 @@ export async function exportCurrent(): Promise<void> {
       get(effects),
       (ch, len, rate) => new OfflineAudioContext(ch, len, rate)
     );
+    if (generation !== exportGeneration) return;
     const channels = Array.from({ length: rendered.numberOfChannels }, (_, c) =>
       rendered.getChannelData(c)
     );
@@ -200,14 +259,43 @@ export async function exportCurrent(): Promise<void> {
     a.download = exportFilename(track);
     a.click();
     URL.revokeObjectURL(a.href);
-  } catch {
-    playerError.set('Export failed.');
+  } catch (error) {
+    if (generation === exportGeneration) {
+      playerError.set(error instanceof RangeError ? error.message : 'Export failed.');
+    }
   } finally {
-    exporting.set(false);
+    if (generation === exportGeneration) exporting.set(false);
   }
 }
 
 export function disposePlayer(): void {
+  loadGeneration++;
+  playGeneration++;
+  exportGeneration++;
+  pendingLoad?.abort();
+  pendingLoad = null;
   cancelAnimationFrame(raf);
   raf = 0;
+  wantPlayId = null;
+  loadingId = null;
+  loadedId = null;
+  engine?.dispose();
+  engine = null;
+  ctx = null;
+  buffer.set(null);
+  loading.set(false);
+  exporting.set(false);
+  playerError.set('');
+  resetPosition();
+}
+
+export function stopPlayback(): void {
+  playGeneration++;
+  wantPlayId = null;
+  engine?.stop();
+  cancelAnimationFrame(raf);
+  raf = 0;
+  isPlaying.set(false);
+  currentTime.set(0);
+  progress.set(0);
 }

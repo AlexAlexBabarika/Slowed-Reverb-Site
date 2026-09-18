@@ -1,6 +1,20 @@
 import type { EffectState } from '../stores/effects';
 import { dbToGain } from './math';
-import { buildImpulseResponse } from './reverb';
+import { REVERB_DECAY, REVERB_SECONDS, buildImpulseResponse } from './reverb';
+
+export function renderLength(buffer: AudioBuffer, state: EffectState): number {
+  if (!Number.isFinite(state.speed) || state.speed <= 0) {
+    throw new RangeError('Choose a positive playback speed before exporting.');
+  }
+  const tail = state.reverb > 0 ? Math.ceil(REVERB_SECONDS * buffer.sampleRate) : 0;
+  const length = Math.ceil(buffer.length / state.speed) + tail;
+  // Float32 render + PCM16 WAV + download blob, excluding the input and graph.
+  const estimatedBytes = length * buffer.numberOfChannels * 8;
+  if (!Number.isSafeInteger(length) || estimatedBytes > 512 * 1024 * 1024) {
+    throw new RangeError('Export is too large. Increase the speed or choose a shorter track.');
+  }
+  return length;
+}
 
 export function encodeWav(channels: Float32Array[], sampleRate: number): ArrayBuffer {
   const numChannels = channels.length;
@@ -45,9 +59,11 @@ export async function renderProcessed(
   state: EffectState,
   makeOffline: (channels: number, length: number, sampleRate: number) => OfflineAudioContext
 ): Promise<AudioBuffer> {
-  // Output length shrinks/stretches with speed (playbackRate).
-  const length = Math.ceil(buffer.length / state.speed);
-  const ctx = makeOffline(buffer.numberOfChannels, length, buffer.sampleRate);
+  const ctx = makeOffline(
+    buffer.numberOfChannels,
+    renderLength(buffer, state),
+    buffer.sampleRate
+  );
 
   const source = ctx.createBufferSource();
   source.buffer = buffer;
@@ -58,7 +74,7 @@ export async function renderProcessed(
   lowpass.frequency.value = state.lowpass;
 
   const convolver = ctx.createConvolver();
-  convolver.buffer = buildImpulseResponse(ctx, 2.5, 3.0);
+  convolver.buffer = buildImpulseResponse(ctx, REVERB_SECONDS, REVERB_DECAY);
   const wet = ctx.createGain();
   const dry = ctx.createGain();
   const master = ctx.createGain();

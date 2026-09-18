@@ -1,3 +1,6 @@
+export const REVERB_SECONDS = 2.5;
+export const REVERB_DECAY = 3.0;
+
 // Deterministic LCG so tests are stable; quality is fine for a reverb tail.
 function mulberry32(seed: number) {
   let a = seed >>> 0;

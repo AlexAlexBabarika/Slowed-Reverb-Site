@@ -1,15 +1,23 @@
 <script lang="ts">
   import { playlist, currentId, removeFromPlaylist } from '$lib/stores/playlist';
-  import { deleteTrack } from '$lib/api/tracks';
+  import { deleteTrack, ApiError } from '$lib/api/tracks';
   import { playTrack } from '$lib/stores/player';
 
+  let removing = $state<string | null>(null);
+  let error = $state('');
+
   async function remove(id: string) {
+    if (removing) return;
+    removing = id;
+    error = '';
     try {
       await deleteTrack(id);
-    } catch {
-      /* drop locally even if the server call fails */
+      removeFromPlaylist(id);
+    } catch (err) {
+      error = err instanceof ApiError ? err.message : 'Could not remove this track. Try again.';
+    } finally {
+      removing = null;
     }
-    removeFromPlaylist(id);
   }
 </script>
 
@@ -31,6 +39,7 @@
             class="track-del"
             aria-label="Remove {track.filename}"
             title="Remove"
+            disabled={removing !== null}
             onclick={() => remove(track.id)}>✕</button
           >
         </li>
@@ -38,3 +47,4 @@
     </ul>
   {/if}
 </div>
+{#if error}<p class="err" role="alert">{error}</p>{/if}

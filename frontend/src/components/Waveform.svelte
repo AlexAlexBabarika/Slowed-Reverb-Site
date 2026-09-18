@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { computePeaks } from '$lib/audio/peaks';
+  import { onMount } from 'svelte';
+  import { bufferPeaks } from '$lib/audio/peaks';
 
   let {
     buffer,
@@ -14,6 +15,15 @@
   } = $props();
 
   let canvas: HTMLCanvasElement;
+  let width = $state(0);
+
+  onMount(() => {
+    const observer = new ResizeObserver(([entry]) => {
+      width = entry.contentRect.width;
+    });
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  });
 
   function draw() {
     if (!canvas) return;
@@ -29,7 +39,7 @@
     const gap = Math.max(1, Math.floor(1 * dpr));
     const stride = barW + gap;
     const bars = Math.max(1, Math.floor(w / stride));
-    const peaks = computePeaks(buffer.getChannelData(0), bars);
+    const peaks = bufferPeaks(buffer, bars);
     const mid = h / 2;
     const playedX = w * progress;
 
@@ -50,22 +60,39 @@
     buffer;
     progress;
     height;
+    width;
     draw();
   });
 
   function seek(e: PointerEvent) {
+    if (!buffer) return;
     const rect = canvas.getBoundingClientRect();
+    if (!rect.width) return;
     onseek(Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)));
+  }
+
+  function keySeek(e: KeyboardEvent) {
+    if (!buffer?.duration) return;
+    let target = progress;
+    if (e.key === 'Home') target = 0;
+    else if (e.key === 'End') target = 1;
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') target += 5 / buffer.duration;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') target -= 5 / buffer.duration;
+    else return;
+    e.preventDefault();
+    onseek(Math.min(1, Math.max(0, target)));
   }
 </script>
 
 <canvas
   bind:this={canvas}
   onpointerdown={seek}
+  onkeydown={keySeek}
   class="wave"
   style="height: {height}px"
   role="slider"
-  tabindex="0"
+  tabindex={buffer ? 0 : -1}
+  aria-disabled={!buffer}
   aria-label="Seek"
   aria-valuenow={Math.round(progress * 100)}
   aria-valuemin="0"
