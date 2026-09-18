@@ -138,6 +138,9 @@ Open <http://localhost:5173>. Vite proxies API requests to Django on port
 
 ## Quality checks
 
+GitHub Actions runs Python lint, formatting, type checks, and the Django tests
+for pull requests and pushes to the main branch.
+
 ```sh
 uv run ruff check .
 uv run ruff format --check .
@@ -149,3 +152,22 @@ npm --prefix frontend test
 
 To apply Python formatting, run `uv run ruff format .`. Ruff can automatically
 fix supported lint violations with `uv run ruff check --fix .`.
+
+## Import limits
+
+The server accepts audio up to 15 minutes and 256 MiB by default. It checks the
+actual media duration for both uploads and YouTube downloads. Files without a
+readable audio stream or duration are rejected.
+
+These environment variables can be set before starting the app:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MAX_AUDIO_DURATION_SECONDS` | `900` | Maximum source duration |
+| `MAX_AUDIO_UPLOAD_BYTES` | `268435456` | Maximum upload/YouTube download size |
+| `AUDIO_PROBE_TIMEOUT_SECONDS` | `15` | Time allowed for each FFprobe process |
+| `AUDIO_TRANSCODE_TIMEOUT_SECONDS` | `90` | Time allowed for each FFmpeg process |
+
+The web server's request timeout also applies to the complete import. Audio
+responses require the owning session and use private, non-storing cache
+headers; uploads are not intended for public CDN caching.

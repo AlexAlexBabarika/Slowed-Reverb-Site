@@ -1,5 +1,7 @@
+import json
 import os
 import shutil
+import subprocess
 import tempfile
 from unittest.mock import patch
 
@@ -187,3 +189,58 @@ class TranscodeTests(SimpleTestCase):
         with open(original) as cookies:
             self.assertEqual(cookies.read(), "# Netscape HTTP Cookie File\n")
         self.assertEqual(os.listdir(self.tmp), ["provided-cookies.txt"])
+
+    @patch("app.audio_ingest.subprocess.run")
+    def test_probe_rejects_invalid_or_unknown_audio_durations(self, run):
+        for duration in ("nan", "inf", "-1", "0", "N/A", None):
+            with self.subTest(duration=duration):
+                run.return_value = subprocess.CompletedProcess(
+                    [],
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "format": {"duration": duration},
+                            "streams": [{"codec_type": "audio"}],
+                        }
+                    ).encode(),
+                )
+                with self.assertRaisesMessage(IngestError, "audio duration"):
+                    probe_audio("audio.wav")
+
+    @patch("app.audio_ingest.subprocess.run")
+    def test_probe_rejects_files_without_an_audio_stream(self, run):
+        run.return_value = subprocess.CompletedProcess(
+            [],
+            0,
+            stdout=b'{"format":{"duration":"10"},"streams":[{"codec_type":"video"}]}',
+        )
+        with self.assertRaisesMessage(IngestError, "no audio track"):
+            probe_audio("video.wav")
+
+    @patch(
+        "app.audio_ingest.subprocess.run",
+        side_effect=subprocess.TimeoutExpired("ffmpeg", 90),
+    )
+    def test_processing_timeout_is_actionable(self, run):
+        with self.assertRaisesMessage(IngestError, "transcode timed out") as raised:
+            transcode_to_compressed("audio.wav", "out.ogg")
+        self.assertIn("took too long", raised.exception.public_message)
+        self.assertEqual(run.call_args.kwargs["timeout"], 90)
+
+    @override_settings(YTDLP_COOKIES_FILE="", MAX_AUDIO_UPLOAD_BYTES=1024)
+    def test_oversized_youtube_download_is_cancelled_and_cleaned_up(self):
+        with patch("app.audio_ingest.yt_dlp.YoutubeDL") as ydl_cls:
+            ydl = ydl_cls.return_value.__enter__.return_value
+
+            def extract(_url, download):
+                options = ydl_cls.call_args.args[0]
+                with open(
+                    options["outtmpl"].replace("%(ext)s", "webm.part"), "wb"
+                ) as partial:
+                    partial.write(b"partial")
+                options["progress_hooks"][0]({"downloaded_bytes": 1025})
+
+            ydl.extract_info.side_effect = extract
+            with self.assertRaisesMessage(IngestError, "MiB import limit"):
+                download_youtube("https://youtu.be/abc", os.path.join(self.tmp, "yt"))
+        self.assertEqual(os.listdir(self.tmp), [])
