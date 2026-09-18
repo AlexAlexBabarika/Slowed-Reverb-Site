@@ -56,7 +56,7 @@
       valueText={`${Math.round($effects.reverb * 100)}%`}
       scale={100}
       unit="%"
-      sub="Dry / wet mix"
+      sub={`Dry / wet mix · ${semitones($effects.speed)} from speed`}
       onchange={(value) => setEffect('reverb', value)}
     />
   </div>
