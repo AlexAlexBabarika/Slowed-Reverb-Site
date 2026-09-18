@@ -3,7 +3,7 @@ import shutil
 import tempfile
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 
 from app.tests.support import make_test_audio
 
@@ -40,3 +40,11 @@ class AudioServingTests(TestCase):
     def test_unknown_track_returns_404(self):
         resp = self.client.get("/api/tracks/00000000-0000-0000-0000-000000000000/audio")
         self.assertEqual(resp.status_code, 404)
+
+    def test_another_session_cannot_read_uploaded_audio(self):
+        track_id = self._upload()
+        response = Client().get(f"/api/tracks/{track_id}/audio")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("private", response["Cache-Control"])
+        self.assertIn("no-store", response["Cache-Control"])

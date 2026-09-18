@@ -1,18 +1,25 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { addToPlaylist, currentTrack, initializePlaylist } from '$lib/stores/playlist';
+  import { onMount, tick } from 'svelte';
+  import { addToPlaylist, currentTrack, initializePlaylist, playlist } from '$lib/stores/playlist';
   import { effects } from '$lib/stores/effects';
+  import { appearance, connectPreferences } from '$lib/stores/preferences';
+  import { handleShortcut } from '$lib/keyboard';
   import type { Track } from '$lib/api/tracks';
   import { syncTrack, applyLiveEffects, disposePlayer, playerError } from '$lib/stores/player';
   import EffectsPanel from '../components/EffectsPanel.svelte';
   import Playlist from '../components/Playlist.svelte';
-  import YoutubePanel from '../components/YoutubePanel.svelte';
-  import UploadPanel from '../components/UploadPanel.svelte';
   import PlayerBar from '../components/PlayerBar.svelte';
+  import CompactPlayer from '../components/CompactPlayer.svelte';
+  import ImportDialog from '../components/ImportDialog.svelte';
+  import QueueDialog from '../components/QueueDialog.svelte';
+  import ExportPanel from '../components/ExportPanel.svelte';
+  import ShortcutsDialog from '../components/ShortcutsDialog.svelte';
 
-  let background = $state<'synthwave' | 'dark'>('synthwave');
   let initialization = $state<'loading' | 'ready' | 'error'>('loading');
   let bootstrap: AbortController | null = null;
+  let importOpen = $state(false);
+  let queueOpen = $state(false);
+  let shortcutsOpen = $state(false);
 
   async function initialize() {
     bootstrap?.abort();
@@ -27,25 +34,31 @@
     }
   }
 
-  function added(t: Track) {
-    addToPlaylist(t);
+  function added(track: Track) {
+    addToPlaylist(track);
   }
 
-  // Load (decode) the audio once whenever the selected track changes — no
-  // refetch on effect changes.
+  async function importFromQueue() {
+    queueOpen = false;
+    await tick();
+    document.getElementById('add-audio')?.focus();
+    importOpen = true;
+  }
+
   $effect(() => {
     syncTrack($currentTrack);
   });
 
-  // Push live effect changes into the running graph (zero network).
   $effect(() => {
     $effects;
     applyLiveEffects();
   });
 
   onMount(() => {
+    const disconnectPreferences = connectPreferences();
     void initialize();
     return () => {
+      disconnectPreferences();
       bootstrap?.abort();
       disposePlayer();
     };
@@ -53,51 +66,84 @@
 </script>
 
 <svelte:head>
-  <title>Slowed x Reverb 💿</title>
+  <title>Slowed × Reverb</title>
+  <meta
+    name="description"
+    content="Slow down audio, shape the tone, add reverb, and export the result."
+  />
+  <meta name="theme-color" content={$appearance === 'midnight' ? '#152c4a' : '#2448b4'} />
 </svelte:head>
 
-<main class="app {background}">
-  <header class="app-header">
-    <div class="bg-switch">
+<svelte:window onkeydown={(event) => handleShortcut(event, () => (shortcutsOpen = true))} />
+
+<a class="skip-link" href="#workspace">Skip to workspace</a>
+<main class="app" class:cobalt={$appearance === 'cobalt'}>
+  <header class="masthead">
+    <h1 translate="no">Slowed × Reverb</h1>
+    <div class="masthead-actions">
       <button
-        class="bg-btn synthwave"
-        class:is-active={background === 'synthwave'}
-        aria-label="Synthwave background"
-        aria-pressed={background === 'synthwave'}
-        onclick={() => (background = 'synthwave')}
-      ></button>
-      <button
-        class="bg-btn dark"
-        class:is-active={background === 'dark'}
-        aria-label="Dark background"
-        aria-pressed={background === 'dark'}
-        onclick={() => (background = 'dark')}
-      ></button>
+        class="appearance-btn"
+        aria-label="Change appearance"
+        aria-pressed={$appearance === 'cobalt'}
+        onclick={() => appearance.update((value) => value === 'midnight' ? 'cobalt' : 'midnight')}
+      >
+        <span class="appearance-dot" aria-hidden="true"></span>
+        <span class="appearance-label">Appearance</span>
+      </button>
+      <button id="add-audio" class="btn btn-ice" aria-label="Add audio" onclick={() => (importOpen = true)} disabled={initialization !== 'ready'}>
+        <span aria-hidden="true">+</span> <span class="add-label">Add audio</span>
+      </button>
     </div>
-    <h1 class="app-title">Slowed x Reverb 💿</h1>
-    <div class="header-spacer"></div>
   </header>
 
-  <div class="main-container">
-    <div class="cards">
-      <EffectsPanel />
-
-      <section class="card playlist-card">
-        <div class="card-title">Playlist 📼</div>
-        {#if initialization === 'ready'}
-          <Playlist />
-          <YoutubePanel onadd={added} />
-          <UploadPanel onadd={added} />
-        {:else if initialization === 'error'}
-          <p class="err" role="alert">Could not initialize your playlist. Retry to enable imports.</p>
-          <button class="btn" onclick={initialize}>Retry</button>
-        {:else}
-          <p role="status">Loading your playlist…</p>
-        {/if}
-        {#if $playerError}<p class="err" role="alert">{$playerError}</p>{/if}
+  <div class="workspace" id="workspace">
+    {#if initialization === 'loading'}
+      <section class="stage status-stage" aria-live="polite">
+        <div class="status-mark" aria-hidden="true"></div>
+        <h2>Loading your tracks…</h2>
+        <p>The listening room will be ready in a moment.</p>
       </section>
-    </div>
+    {:else if initialization === 'error'}
+      <section class="stage status-stage" role="alert">
+        <h2>Could not load your tracks</h2>
+        <p>Check the connection and retry to import or play audio.</p>
+        <button class="btn btn-primary" onclick={initialize}>Retry</button>
+      </section>
+    {:else}
+      <PlayerBar onadd={() => (importOpen = true)} onqueue={() => (queueOpen = true)} />
+      <EffectsPanel />
+      <ExportPanel />
+      {#if $playerError}<p class="error-message player-error" role="alert">{$playerError}</p>{/if}
 
-    <PlayerBar />
+      <aside class="queue-panel" aria-labelledby="queue-heading">
+        <div class="section-heading">
+          <div>
+            <h2 id="queue-heading">Queue</h2>
+            <p>{$playlist.length} {$playlist.length === 1 ? 'track' : 'tracks'}</p>
+          </div>
+          <button class="icon-btn" aria-label="Add audio" onclick={() => (importOpen = true)}>+</button>
+        </div>
+        <Playlist />
+        <button class="btn btn-secondary queue-add" onclick={() => (importOpen = true)}>
+          <span aria-hidden="true">+</span> Add audio
+        </button>
+      </aside>
+    {/if}
   </div>
+
+  <footer class="workspace-footer">
+    <button class="text-btn" onclick={() => (shortcutsOpen = true)}>Keyboard shortcuts <kbd>?</kbd></button>
+  </footer>
+
+  {#if initialization === 'ready'}
+    <CompactPlayer onqueue={() => (queueOpen = true)} />
+  {/if}
 </main>
+
+<ImportDialog open={importOpen} onclose={() => (importOpen = false)} onadd={added} />
+<ShortcutsDialog open={shortcutsOpen} onclose={() => (shortcutsOpen = false)} />
+<QueueDialog
+  open={queueOpen}
+  onclose={() => (queueOpen = false)}
+  onadd={importFromQueue}
+/>
