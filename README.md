@@ -6,6 +6,31 @@ Change the speed and pitch of audio in your browser. The application combines a
 Django API with a SvelteKit frontend and includes the foundations for effects
 such as reverb.
 
+## Listening workspace
+
+Choose **Original**, **Slowed**, **Dream**, or **Afterhours** to set the speed,
+reverb, tone, and output together. Adjust any control to customize the sound;
+**Reset** returns every effect to the original audio settings.
+
+Effect settings, appearance, and the keyboard-shortcut preference are saved in
+this browser when local storage is available. Audio data is not saved in local
+storage; the queue still belongs to the server session. Blocked or corrupt
+browser storage does not prevent playback.
+
+Open **Keyboard shortcuts** below the workspace, or press `?`, for the guide:
+
+| Key | Action |
+| --- | --- |
+| Space | Play / pause |
+| Escape | Stop and rewind |
+| Left / right arrow | Seek five source seconds |
+| Shift + left / right arrow | Previous / next track |
+| R | Toggle repeat |
+
+Shortcuts leave fields, buttons, links, sliders, and open dialogs alone. Browser
+modifier shortcuts are preserved. All workspace shortcuts can be disabled in
+the guide.
+
 ## Run with Docker
 
 Docker is the quickest way to run the complete application. The image builds
@@ -22,6 +47,30 @@ The SQLite database and processed audio persist in the `app-data` Docker
 volume. For a production deployment, set `DJANGO_SECRET_KEY` and
 `DJANGO_ALLOWED_HOSTS`; the available settings are documented in
 [`compose.yaml`](compose.yaml).
+
+## Updating an existing checkout
+
+After changes have reached `main`, stop any running development servers and
+update your checkout:
+
+```sh
+git switch main
+git pull --ff-only origin main
+```
+
+For Docker, rebuild and recreate the application with `docker compose up --build`.
+The existing `app-data` volume is preserved.
+
+For local development, refresh dependencies and restart the launcher:
+
+```sh
+uv sync --locked
+npm --prefix frontend ci
+uv run python -m slowedreverbsite.launcher xreverb
+```
+
+Merging a pull request does not update your local checkout or rebuild an
+existing Docker image.
 
 ## Local development
 
@@ -148,10 +197,17 @@ uv run mypy .
 uv run python manage.py test
 npm --prefix frontend run check
 npm --prefix frontend test
+npm --prefix frontend run build
+npm --prefix frontend audit
 ```
 
 To apply Python formatting, run `uv run ruff format .`. Ruff can automatically
 fix supported lint violations with `uv run ruff check --fix .`.
+
+GitHub Actions checks the frontend on Node 20 and 24 using the committed lockfile.
+The toolchain uses patched SvelteKit, Svelte, Vite, and Vitest releases. The scoped
+`cookie` override keeps SvelteKit's compatible cookie API on a patched release
+until its upstream dependency range includes it.
 
 ## Import limits
 
